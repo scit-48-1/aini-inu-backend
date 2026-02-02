@@ -27,6 +27,7 @@ import scit.ainiinu.community.exception.CommunityErrorCode;
 import scit.ainiinu.community.service.PostService;
 
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
