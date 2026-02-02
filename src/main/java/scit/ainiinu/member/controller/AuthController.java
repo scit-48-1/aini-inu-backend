@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import scit.ainiinu.common.response.ApiResponse;
 import scit.ainiinu.common.security.annotation.Public;
 import scit.ainiinu.member.dto.request.LoginRequest;
-import scit.ainiinu.member.dto.request.TokenRefreshRequest;
+<<<<<<< HEAD
 import scit.ainiinu.member.dto.response.LoginResponse;
 import scit.ainiinu.member.entity.enums.SocialProvider;
 import scit.ainiinu.member.service.AuthService;
@@ -42,17 +42,5 @@ public class AuthController {
         SocialProvider socialProvider = SocialProvider.valueOf(provider.toUpperCase());
         LoginResponse response = authService.login(socialProvider, request);
         return ResponseEntity.ok(ApiResponse.success(response));
-    }
-
-    /**
-     * 토큰 갱신 API
-     * Refresh Token을 사용하여 새로운 Access Token을 발급받습니다.
-     */
-    @Public
-    @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<LoginResponse>> refresh(
-            @Valid @RequestBody TokenRefreshRequest request
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(authService.refresh(request)));
     }
 }

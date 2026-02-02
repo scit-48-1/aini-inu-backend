@@ -3,7 +3,6 @@ package scit.ainiinu.member.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -14,7 +13,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import scit.ainiinu.common.security.interceptor.JwtAuthInterceptor;
 import scit.ainiinu.common.security.resolver.CurrentMemberArgumentResolver;
 import scit.ainiinu.member.dto.request.LoginRequest;
-import scit.ainiinu.member.dto.request.TokenRefreshRequest;
 import scit.ainiinu.member.dto.response.LoginResponse;
 import scit.ainiinu.member.service.AuthService;
 
@@ -49,91 +47,48 @@ class AuthControllerTest {
         given(jwtAuthInterceptor.preHandle(any(), any(), any())).willReturn(true);
     }
 
-    @Nested
-    @DisplayName("소셜 로그인")
-    class Login {
+    @Test
+    @WithMockUser
+    @DisplayName("소셜 로그인 성공 시 자체 JWT 토큰을 반환한다.")
+    void login_Success() throws Exception {
+        // given
+        LoginRequest request = new LoginRequest("valid-social-token");
+        LoginResponse response = LoginResponse.builder()
+                .accessToken("access-token")
+                .refreshToken("refresh-token")
+                .tokenType("Bearer")
+                .expiresIn(3600L)
+                .isNewMember(true)
+                .memberId(1L)
+                .build();
 
-        @Test
-        @WithMockUser
-        @DisplayName("유효한 소셜 토큰으로 로그인하면 JWT 토큰을 반환한다")
-        void login_withValidSocialToken_returnsJwtToken() throws Exception {
-            // given
-            LoginRequest request = new LoginRequest("valid-social-token");
-            LoginResponse response = LoginResponse.builder()
-                    .accessToken("access-token")
-                    .refreshToken("refresh-token")
-                    .tokenType("Bearer")
-                    .expiresIn(3600L)
-                    .isNewMember(true)
-                    .memberId(1L)
-                    .build();
+        given(authService.login(any(), any())).willReturn(response);
 
-            given(authService.login(any(), any())).willReturn(response);
-
-            // when
-            var result = mockMvc.perform(post("/api/v1/auth/login/kakao")
-                    .with(csrf())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request)));
-
-            // then
-            result.andDo(print())
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data.accessToken").value("access-token"))
-                    .andExpect(jsonPath("$.data.isNewMember").value(true));
-        }
-
-        @Test
-        @WithMockUser
-        @DisplayName("소셜 액세스 토큰이 없으면 400 에러를 반환한다")
-        void login_withEmptyToken_returnsBadRequest() throws Exception {
-            // given
-            LoginRequest request = new LoginRequest("");
-
-            // when
-            var result = mockMvc.perform(post("/api/v1/auth/login/kakao")
-                    .with(csrf())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request)));
-
-            // then
-            result.andDo(print())
-                    .andExpect(status().isBadRequest());
-        }
+        // when & then
+        mockMvc.perform(post("/api/v1/auth/login/kakao")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.data.isNewMember").value(true));
     }
 
-    @Nested
-    @DisplayName("토큰 갱신")
-    class Refresh {
+    @Test
+    @WithMockUser
+    @DisplayName("소셜 액세스 토큰이 없으면 400 에러를 반환한다.")
+    void login_BadRequest() throws Exception {
+        // given
+        LoginRequest request = new LoginRequest(""); // 빈 토큰
 
-        @Test
-        @WithMockUser
-        @DisplayName("유효한 리프레시 토큰으로 갱신하면 새 토큰을 반환한다")
-        void refresh_withValidRefreshToken_returnsNewTokens() throws Exception {
-            // given
-            TokenRefreshRequest request = new TokenRefreshRequest("valid-refresh-token");
-            LoginResponse response = LoginResponse.builder()
-                    .accessToken("new-access-token")
-                    .refreshToken("new-refresh-token")
-                    .tokenType("Bearer")
-                    .expiresIn(3600L)
-                    .build();
-
-            given(authService.refresh(any())).willReturn(response);
-
-            // when
-            var result = mockMvc.perform(post("/api/v1/auth/refresh")
-                    .with(csrf())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request)));
-
-            // then
-            result.andDo(print())
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data.accessToken").value("new-access-token"))
-                    .andExpect(jsonPath("$.data.refreshToken").value("new-refresh-token"));
-        }
+        // when & then
+        mockMvc.perform(post("/api/v1/auth/login/kakao")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andDo(print())
+                .andExpect(status().isBadRequest());
     }
 }
