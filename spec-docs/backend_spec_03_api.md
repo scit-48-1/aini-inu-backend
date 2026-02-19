@@ -17,7 +17,9 @@
 | **인증 선택적 API** | 토큰 없이도 접근 가능, 토큰 있으면 추가 정보 제공 |
 
 **인증 불필요 API 목록**:
+- `POST /auth/login` - 이메일 로그인 (MVP)
 - `POST /auth/login/{provider}` - 소셜 로그인
+- `POST /members/signup` - 회원 가입 (MVP)
 - `POST /auth/refresh` - 토큰 갱신
 - `GET /breeds` - 견종 목록 조회
 - `GET /personalities` - 성향 카테고리 목록 조회
@@ -98,6 +100,46 @@
 ```
 
 ## 3.2 인증 (Authentication)
+
+### 이메일 로그인 (MVP)
+
+**Endpoint**: `POST /auth/login`
+
+**설명**: 이메일/비밀번호로 JWT 토큰을 발급받습니다.
+
+**Request Body**
+```json
+{
+  "email": "user@example.com",
+  "password": "Abcd1234!"
+}
+```
+
+**Response (200 OK)**
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
+    "tokenType": "Bearer",
+    "expiresIn": 3600,
+    "memberId": 1,
+    "nickname": "건홍이네"
+  }
+}
+```
+
+**Error Codes**
+
+| 상태 코드 | 에러 코드 | 설명 |
+|-----------|-----------|------|
+| 400 | C001 | 입력값 검증 실패 |
+| 401 | C104 | 이메일 또는 비밀번호가 올바르지 않음 |
+| 403 | M005 | 정지된 회원 |
+
+---
 
 ### 소셜 로그인
 
@@ -204,11 +246,63 @@
 
 ## 3.3 회원 (Members)
 
+### 회원 가입 (계정 생성, MVP)
+
+**Endpoint**: `POST /members/signup`
+
+**설명**:
+- 이메일 기반 계정을 생성합니다.
+- MVP에서는 최소 필드만 입력받고, 상세 프로필은 `POST /members/profile`에서 설정합니다.
+
+**Request Body**
+```json
+{
+  "email": "user@example.com",
+  "password": "Abcd1234!",
+  "nickname": "건홍이네",
+  "memberType": "NON_PET_OWNER"
+}
+```
+
+**Request Fields**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| email | string | O | 이메일 (고유) |
+| password | string | O | 비밀번호 (최소 8자) |
+| nickname | string | O | 닉네임 (최대 10자, 고유) |
+| memberType | string | O | 회원 유형 (PET_OWNER, NON_PET_OWNER) |
+
+**Response (200 OK)**
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": {
+    "id": 1,
+    "email": "user@example.com",
+    "nickname": "건홍이네",
+    "memberType": "NON_PET_OWNER",
+    "createdAt": "2026-01-26T10:00:00+09:00"
+  }
+}
+```
+
+**Error Codes**
+
+| 상태 코드 | 에러 코드 | 설명 |
+|-----------|-----------|------|
+| 400 | C001 | 입력값 검증 실패 |
+| 409 | M003 | 이미 사용 중인 닉네임 |
+| 409 | M007 | 이미 가입된 이메일 |
+
+---
+
 ### 회원 가입 완료 (프로필 설정)
 
 **Endpoint**: `POST /members/profile`
 
-**설명**: 소셜 로그인 후 프로필 정보를 설정하여 회원 가입을 완료합니다. (최초 가입 시 `memberType`은 `NON_PET_OWNER`로 생성되며, 반려견 등록 시 `PET_OWNER`로 자동 전환됩니다.)
+**설명**: 회원가입 후 프로필 정보를 설정/보완합니다. (최초 가입 시 `memberType`은 `NON_PET_OWNER` 기본값이며, 반려견 등록 시 `PET_OWNER`로 자동 전환됩니다.)
 
 **Request Body**
 ```json
@@ -372,6 +466,128 @@
       }
     ]
   }
+}
+```
+
+---
+
+### 다른 회원 반려견 목록 조회
+
+**Endpoint**: `GET /members/{memberId}/pets`
+
+**Response (200 OK)**
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": [
+    {
+      "id": 5,
+      "name": "뭉치",
+      "breed": {"id": 13, "name": "말티즈"},
+      "age": 2,
+      "gender": "MALE",
+      "size": "SMALL",
+      "photoUrl": "https://s3.../pet.jpg",
+      "isMain": true,
+      "isCertified": true
+    }
+  ]
+}
+```
+
+---
+
+### 내 팔로워 목록 조회
+
+**Endpoint**: `GET /members/me/followers`
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
+|----------|------|------|--------|------|
+| page | integer | X | 0 | 페이지 번호 (0부터) |
+| size | integer | X | 20 | 페이지 크기 |
+
+**Response (200 OK)**
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": {
+    "content": [
+      {
+        "id": 10,
+        "nickname": "산책메이트",
+        "profileImageUrl": "https://s3.../profile.jpg",
+        "mannerTemperature": 6.5,
+        "followedAt": "2026-01-24T08:00:00+09:00"
+      }
+    ],
+    "pageNumber": 0,
+    "pageSize": 20,
+    "first": true,
+    "last": false,
+    "hasNext": true
+  }
+}
+```
+
+---
+
+### 내 팔로잉 목록 조회
+
+**Endpoint**: `GET /members/me/following`
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
+|----------|------|------|--------|------|
+| page | integer | X | 0 | 페이지 번호 (0부터) |
+| size | integer | X | 20 | 페이지 크기 |
+
+**Response (200 OK)**
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": {
+    "content": [
+      {
+        "id": 11,
+        "nickname": "몽이친구",
+        "profileImageUrl": "https://s3.../profile2.jpg",
+        "mannerTemperature": 7.1,
+        "followedAt": "2026-01-20T11:00:00+09:00"
+      }
+    ],
+    "pageNumber": 0,
+    "pageSize": 20,
+    "first": true,
+    "last": true,
+    "hasNext": false
+  }
+}
+```
+
+---
+
+### 내 산책 활동 통계 조회
+
+**Endpoint**: `GET /members/me/stats/walk`
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
+|----------|------|------|--------|------|
+| weeks | integer | X | 18 | 통계 주차(칸) 수 |
+
+**Response (200 OK)**
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": [0, 1, 0, 2, 1, 0, 0, 3]
 }
 ```
 
@@ -1079,6 +1295,37 @@
 
 ---
 
+### 핫스팟 조회 (대시보드 추천)
+
+**Endpoint**: `GET /threads/hotspot`
+
+**설명**:
+- 최근 지정 시간(`hours`) 내 활성 스레드를 지역 단위로 집계해 가장 활발한 지역 1개를 반환합니다.
+- 대시보드 추천 배너용 API입니다.
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
+|----------|------|------|--------|------|
+| hours | integer | X | 3 | 최근 집계 시간(시간 단위) |
+| latitude | decimal | X | - | 기준 위도 (선택) |
+| longitude | decimal | X | - | 기준 경도 (선택) |
+| radius | integer | X | 10 | 집계 반경(km, 선택) |
+
+**Response (200 OK)**
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": {
+    "region": "성수동 서울숲",
+    "count": 31
+  }
+}
+```
+
+---
+
 ### 중복 스레드 확인
 
 **Endpoint**: `GET /threads/check-duplicate`
@@ -1117,6 +1364,10 @@
 ---
 
 ## 3.6 채팅 (Chat)
+
+**정책**
+- 직접 DM 생성 API는 제공하지 않습니다.
+- 채팅방은 `스레드 신청(apply)` 또는 `실종-제보 매칭(match)`을 통해서만 생성/연결됩니다.
 
 ### 채팅방 목록 조회
 
@@ -1508,6 +1759,50 @@
 
 ## 3.7 실종 반려견 (Lost Pets)
 
+### 실종/제보 이미지 사전 분석 (MVP)
+
+**Endpoint**: `POST /lost-pets/analyze`
+
+**설명**:
+- 사진을 사전 분석하여 품종/특징 후보를 반환합니다.
+- 본 API는 등록 전 프리뷰 용도이며, 최종 저장은 `POST /lost-pets` 또는 `POST /sightings`에서 수행합니다.
+
+**Request Body**
+```json
+{
+  "image": "data:image/jpeg;base64,..."
+}
+```
+
+**Response (200 OK)**
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": {
+    "breed": {
+      "ko": "포메라니안",
+      "en": "Pomeranian"
+    },
+    "features": [
+      {"ko": "갈색 털", "en": "brown fur"},
+      {"ko": "빨간 목줄", "en": "red collar"}
+    ],
+    "confidence": 0.87,
+    "previewImageUrl": "https://cdn.aini-inu.com/lost-pets/previews/uuid.jpg"
+  }
+}
+```
+
+**Error Codes**
+
+| 상태 코드 | 에러 코드 | 설명 |
+|-----------|-----------|------|
+| 400 | L001 | 사진에서 강아지가 감지되지 않음 |
+| 400 | C001 | 지원하지 않는 이미지 형식/요청 본문 오류 |
+
+---
+
 ### 실종 등록
 
 **Endpoint**: `POST /lost-pets`
@@ -1645,6 +1940,61 @@
     "pageNumber": 0,
     "pageSize": 20,
     "totalElements": 8,
+    "totalPages": 1,
+    "first": true,
+    "last": true
+  }
+}
+```
+
+---
+
+### 유사 실종 목록 조회 (제보 기준)
+
+**Endpoint**: `GET /sightings/{sightingId}/similar-lost-pets`
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
+|----------|------|------|--------|------|
+| radius | integer | X | 10 | 반경 (km) |
+| days | integer | X | 30 | 기간 (일) |
+| page | integer | X | 0 | 페이지 (0부터) |
+| size | integer | X | 20 | 페이지 크기 |
+
+**Response (200 OK)**
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": {
+    "content": [
+      {
+        "id": 50,
+        "pet": {
+          "id": 1,
+          "name": "몽이",
+          "photoUrl": "https://s3.../pet.jpg"
+        },
+        "lastSeenLocation": {
+          "placeName": "여의도 한강공원",
+          "latitude": 37.5283,
+          "longitude": 126.9328
+        },
+        "lastSeenAt": "2026-01-26T14:30:00+09:00",
+        "similarityScore": {
+          "total": 0.81,
+          "image": 0.88,
+          "location": 0.67,
+          "time": 0.91
+        },
+        "distanceKm": 2.9,
+        "hoursAgo": 3
+      }
+    ],
+    "pageNumber": 0,
+    "pageSize": 20,
+    "totalElements": 4,
     "totalPages": 1,
     "first": true,
     "last": true
@@ -1906,6 +2256,8 @@
 | page | integer | X | 0 | 페이지 번호 (0부터) |
 | size | integer | X | 20 | 페이지 크기 |
 | sort | string | X | -createdAt | 정렬 |
+| memberId | long | X | - | 특정 작성자 게시물만 조회 |
+| location | string | X | - | 지역 문자열 필터 (contains) |
 
 **설명**:
 - 무한 스크롤을 위해 `SliceResponse` 형태로 응답합니다.
@@ -1938,6 +2290,35 @@
     "last": false,
     "hasNext": true
   }
+}
+```
+
+---
+
+### 스토리 목록 조회 (Diary 기반)
+
+**Endpoint**: `GET /stories`
+
+**설명**:
+- 팔로잉한 회원의 공개 산책 일기(`walk-diary`)를 스토리 카드 형태로 조회합니다.
+- 최신순으로 최대 30개를 반환합니다.
+
+**Response (200 OK)**
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": [
+    {
+      "id": "wd_1001",
+      "memberId": 2,
+      "nickname": "뭉치맘",
+      "profileImageUrl": "https://s3.../profile.jpg",
+      "coverImageUrl": "https://s3.../walk-diary-cover.jpg",
+      "walkDate": "2026-01-26",
+      "createdAt": "2026-01-26T20:10:00+09:00"
+    }
+  ]
 }
 ```
 
@@ -1989,6 +2370,47 @@
 ```json
 {
   "content": "와 너무 귀여워요! 🐕"
+}
+```
+
+---
+
+### 댓글 목록 조회
+
+**Endpoint**: `GET /posts/{postId}/comments`
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
+|----------|------|------|--------|------|
+| page | integer | X | 0 | 페이지 번호 (0부터) |
+| size | integer | X | 20 | 페이지 크기 |
+| sort | string | X | createdAt,asc | 정렬 |
+
+**Response (200 OK)**
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": {
+    "content": [
+      {
+        "id": 3001,
+        "author": {
+          "id": 2,
+          "nickname": "뭉치맘",
+          "profileImageUrl": "https://s3.../profile2.jpg"
+        },
+        "content": "와 너무 귀여워요! 🐕",
+        "createdAt": "2026-01-26T18:10:00+09:00"
+      }
+    ],
+    "pageNumber": 0,
+    "pageSize": 20,
+    "first": true,
+    "last": true,
+    "hasNext": false
+  }
 }
 ```
 
@@ -2191,7 +2613,7 @@
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| purpose | string | O | 업로드 목적 (PROFILE, PET_PHOTO, POST, LOST_PET, SIGHTING) |
+| purpose | string | O | 업로드 목적 (PROFILE, PET_PHOTO, POST, WALK_DIARY, LOST_PET, SIGHTING) |
 | fileName | string | O | 원본 파일명 |
 | contentType | string | O | MIME 타입 (예: image/jpeg) |
 
@@ -2227,6 +2649,7 @@
 - PROFILE: `profiles/{uuid}.{extension}`
 - PET_PHOTO: `pets/{uuid}.{extension}`
 - POST: `posts/{uuid}.{extension}`
+- WALK_DIARY: `walk-diaries/{uuid}.{extension}`
 - LOST_PET: `lost-pets/{uuid}.{extension}`
 - SIGHTING: `sightings/{uuid}.{extension}`
 
@@ -2247,7 +2670,189 @@
 
 ---
 
-## 3.12 공통 에러 코드
+## 3.12 산책 일기 (Walk Diaries)
+
+### 산책 일기 생성
+
+**Endpoint**: `POST /walk-diaries`
+
+**Request Body**
+```json
+{
+  "threadId": 100,
+  "title": "서울숲 저녁 산책 기록",
+  "content": "오늘은 서울숲에서 산책 메이트와 함께 1시간 산책했어요.",
+  "photoUrls": ["https://cdn.aini-inu.com/walk-diaries/uuid1.jpg"],
+  "walkDate": "2026-01-26",
+  "location": "서울 성동구 서울숲",
+  "isPublic": true,
+  "tags": [
+    {"memberId": 2, "nickname": "뭉치맘"}
+  ]
+}
+```
+
+**Response (200 OK)**
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": {
+    "id": "wd_1001",
+    "author": {
+      "id": 1,
+      "nickname": "건홍이네",
+      "profileImageUrl": "https://s3.../profile.jpg"
+    },
+    "threadId": 100,
+    "title": "서울숲 저녁 산책 기록",
+    "content": "오늘은 서울숲에서 산책 메이트와 함께 1시간 산책했어요.",
+    "photoUrls": ["https://cdn.aini-inu.com/walk-diaries/uuid1.jpg"],
+    "walkDate": "2026-01-26",
+    "location": "서울 성동구 서울숲",
+    "isPublic": true,
+    "tags": [
+      {"memberId": 2, "nickname": "뭉치맘"}
+    ],
+    "createdAt": "2026-01-26T20:10:00+09:00",
+    "updatedAt": "2026-01-26T20:10:00+09:00"
+  }
+}
+```
+
+---
+
+### 산책 일기 목록 조회
+
+**Endpoint**: `GET /walk-diaries`
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
+|----------|------|------|--------|------|
+| memberId | long | X | 내 ID | 특정 회원 일기 조회 |
+| page | integer | X | 0 | 페이지 번호 (0부터) |
+| size | integer | X | 20 | 페이지 크기 |
+| sort | string | X | -walkDate | 정렬 |
+| visibility | string | X | PUBLIC | 공개 범위 (PUBLIC, ALL) |
+
+**Response (200 OK)**
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": {
+    "content": [
+      {
+        "id": "wd_1001",
+        "author": {
+          "id": 1,
+          "nickname": "건홍이네",
+          "profileImageUrl": "https://s3.../profile.jpg"
+        },
+        "title": "서울숲 저녁 산책 기록",
+        "photoUrls": ["https://cdn.aini-inu.com/walk-diaries/uuid1.jpg"],
+        "walkDate": "2026-01-26",
+        "location": "서울 성동구 서울숲",
+        "isPublic": true,
+        "createdAt": "2026-01-26T20:10:00+09:00"
+      }
+    ],
+    "pageNumber": 0,
+    "pageSize": 20,
+    "first": true,
+    "last": false,
+    "hasNext": true
+  }
+}
+```
+
+---
+
+### 산책 일기 상세 조회
+
+**Endpoint**: `GET /walk-diaries/{diaryId}`
+
+**Response (200 OK)**: 산책 일기 전체 필드 반환
+
+---
+
+### 산책 일기 수정
+
+**Endpoint**: `PATCH /walk-diaries/{diaryId}`
+
+**Request Body**: 수정할 필드만 포함
+
+---
+
+### 산책 일기 삭제
+
+**Endpoint**: `DELETE /walk-diaries/{diaryId}`
+
+**Response (200 OK)**
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": null
+}
+```
+
+---
+
+### 팔로잉 산책 일기 목록 조회
+
+**Endpoint**: `GET /walk-diaries/following`
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
+|----------|------|------|--------|------|
+| page | integer | X | 0 | 페이지 번호 (0부터) |
+| size | integer | X | 20 | 페이지 크기 |
+
+**Response (200 OK)**
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": {
+    "content": [
+      {
+        "id": "wd_1002",
+        "author": {
+          "id": 2,
+          "nickname": "뭉치맘",
+          "profileImageUrl": "https://s3.../profile2.jpg"
+        },
+        "title": "저녁 한강 산책",
+        "photoUrls": ["https://cdn.aini-inu.com/walk-diaries/uuid2.jpg"],
+        "walkDate": "2026-01-25",
+        "location": "한강공원",
+        "isPublic": true,
+        "createdAt": "2026-01-25T19:00:00+09:00"
+      }
+    ],
+    "pageNumber": 0,
+    "pageSize": 20,
+    "first": true,
+    "last": true,
+    "hasNext": false
+  }
+}
+```
+
+**Error Codes**
+
+| 상태 코드 | 에러 코드 | 설명 |
+|-----------|-----------|------|
+| 403 | WD001 | 비공개 일기 접근 불가 |
+| 404 | WD002 | 산책 일기를 찾을 수 없음 |
+| 403 | WD003 | 산책 일기 작성자만 수정/삭제 가능 |
+
+---
+
+## 3.13 공통 에러 코드
 
 | HTTP 상태 | 에러 코드 | 설명 |
 |-----------|-----------|------|
@@ -2256,6 +2861,7 @@
 | 401 | C101 | 인증이 필요합니다 |
 | 401 | C102 | 유효하지 않은 토큰입니다 |
 | 401 | C103 | 만료된 토큰입니다 |
+| 401 | C104 | 이메일 또는 비밀번호가 올바르지 않습니다 |
 | 403 | C201 | 권한이 없습니다 |
 | 404 | C301 | 요청한 리소스를 찾을 수 없습니다 |
 | 500 | C999 | 서버 내부 오류가 발생했습니다 |
