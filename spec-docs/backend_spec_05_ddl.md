@@ -16,6 +16,7 @@
 CREATE TABLE member (
     id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '회원 ID',
     email VARCHAR(255) NOT NULL COMMENT '이메일',
+    password_hash VARCHAR(255) COMMENT '이메일 로그인 비밀번호 해시 (소셜 전용 계정은 NULL)',
     nickname VARCHAR(50) NOT NULL COMMENT '닉네임 (최대 10자)',
     profile_image_url VARCHAR(500) COMMENT '프로필 이미지 URL',
     age INT COMMENT '나이',
@@ -30,8 +31,8 @@ CREATE TABLE member (
     manner_score_count INT NOT NULL DEFAULT 0 COMMENT '받은 매너 점수 개수',
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT '상태: ACTIVE, INACTIVE, BANNED',
     is_verified TINYINT(1) NOT NULL DEFAULT 0 COMMENT '인증 완료 여부',
-    social_provider VARCHAR(20) NOT NULL COMMENT '소셜 로그인: NAVER, KAKAO, GOOGLE',
-    social_id VARCHAR(255) NOT NULL COMMENT '소셜 고유 ID',
+    social_provider VARCHAR(20) COMMENT '소셜 로그인: NAVER, KAKAO, GOOGLE',
+    social_id VARCHAR(255) COMMENT '소셜 고유 ID',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일시',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시',
     
@@ -83,6 +84,17 @@ CREATE TABLE member_personality (
     INDEX idx_personality_type_id (personality_type_id),
     UNIQUE KEY uk_member_personality (member_id, personality_type_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='회원-견주 성향 연결';
+
+CREATE TABLE member_follow (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '팔로우 ID',
+    follower_id BIGINT NOT NULL COMMENT '팔로우한 회원 ID (member.id 참조)',
+    following_id BIGINT NOT NULL COMMENT '팔로우 대상 회원 ID (member.id 참조)',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일시',
+    
+    INDEX idx_follower_id (follower_id),
+    INDEX idx_following_id (following_id),
+    UNIQUE KEY uk_follower_following (follower_id, following_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='회원 팔로우 관계';
 
 -- -----------------------------------------------------
 -- 매너 평가 (Member Context)
@@ -236,6 +248,47 @@ CREATE TABLE thread_filter (
     INDEX idx_thread_id (thread_id),
     INDEX idx_filter_type (filter_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='스레드 참가 조건 필터';
+
+CREATE TABLE walk_diary (
+    id VARCHAR(36) PRIMARY KEY COMMENT '산책 일기 ID (wd_uuid)',
+    author_id BIGINT NOT NULL COMMENT '작성자 ID (member.id 참조)',
+    thread_id BIGINT COMMENT '연결 스레드 ID (thread.id 참조, nullable)',
+    title VARCHAR(100) NOT NULL COMMENT '일기 제목',
+    content TEXT NOT NULL COMMENT '일기 본문',
+    walk_date DATE NOT NULL COMMENT '산책 날짜',
+    location VARCHAR(200) COMMENT '장소명',
+    is_public TINYINT(1) NOT NULL DEFAULT 1 COMMENT '공개 여부',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일시',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시',
+    deleted_at DATETIME COMMENT '삭제일시(소프트 삭제)',
+    
+    INDEX idx_author_id (author_id),
+    INDEX idx_thread_id (thread_id),
+    INDEX idx_author_walk_date (author_id, walk_date),
+    INDEX idx_public_walk_date (is_public, walk_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='산책 일기';
+
+CREATE TABLE walk_diary_photo (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '일기 사진 ID',
+    diary_id VARCHAR(36) NOT NULL COMMENT '산책 일기 ID (walk_diary.id 참조)',
+    photo_url VARCHAR(500) NOT NULL COMMENT '이미지 URL',
+    sort_order INT NOT NULL DEFAULT 0 COMMENT '정렬 순서',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일시',
+    
+    INDEX idx_diary_id (diary_id),
+    INDEX idx_diary_sort (diary_id, sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='산책 일기 사진';
+
+CREATE TABLE walk_diary_tag (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '일기 태그 ID',
+    diary_id VARCHAR(36) NOT NULL COMMENT '산책 일기 ID (walk_diary.id 참조)',
+    tagged_member_id BIGINT NOT NULL COMMENT '태그된 회원 ID (member.id 참조)',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일시',
+    
+    INDEX idx_diary_id (diary_id),
+    INDEX idx_tagged_member_id (tagged_member_id),
+    UNIQUE KEY uk_diary_tag_member (diary_id, tagged_member_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='산책 일기 태그';
 
 -- -----------------------------------------------------
 -- 채팅 (Chat Context)

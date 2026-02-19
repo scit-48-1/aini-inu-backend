@@ -14,6 +14,7 @@ erDiagram
     MEMBER ||--o{ POST : writes
     MEMBER ||--o{ COMMENT : writes
     MEMBER ||--o{ POST_LIKE : likes
+    MEMBER ||--o{ MEMBER_FOLLOW : follows
     MEMBER ||--o{ BLOCK : blocks
     MEMBER ||--o{ MANNER_SCORE : gives
     MEMBER ||--o{ MANNER_SCORE : receives
@@ -21,6 +22,8 @@ erDiagram
     MEMBER ||--o{ MEMBER_PERSONALITY : has
     MEMBER ||--o{ NOTIFICATION : receives
     MEMBER ||--|| NOTIFICATION_SETTING : has
+    MEMBER ||--o{ WALK_DIARY : writes
+    MEMBER ||--o{ WALK_DIARY_TAG : tags
     
     %% Pet Context
     PET ||--o{ PET_PERSONALITY : has
@@ -37,6 +40,7 @@ erDiagram
     THREAD ||--o{ THREAD_PET : includes
     THREAD ||--o{ THREAD_FILTER : has
     THREAD ||--o{ CHAT_ROOM : "creates (WALK)"
+    THREAD ||--o{ WALK_DIARY : references
     
     %% Chat Context
     CHAT_ROOM ||--o{ CHAT_PARTICIPANT : contains
@@ -51,11 +55,16 @@ erDiagram
     %% Community Context
     POST ||--o{ COMMENT : has
     POST ||--o{ POST_LIKE : has
+    
+    %% Walk Diary Context
+    WALK_DIARY ||--o{ WALK_DIARY_PHOTO : has
+    WALK_DIARY ||--o{ WALK_DIARY_TAG : tags
 
     %% Entity Definitions
     MEMBER {
         bigint id PK
         varchar email UK
+        varchar password_hash
         varchar nickname UK
         varchar profile_image_url
         int age
@@ -96,6 +105,13 @@ erDiagram
         bigint id PK
         bigint member_id "INDEX"
         bigint personality_type_id "INDEX"
+        datetime created_at
+    }
+
+    MEMBER_FOLLOW {
+        bigint id PK
+        bigint follower_id "INDEX"
+        bigint following_id "INDEX"
         datetime created_at
     }
     
@@ -187,6 +203,35 @@ erDiagram
         varchar filter_type
         text filter_values
         tinyint is_required
+        datetime created_at
+    }
+
+    WALK_DIARY {
+        varchar id PK
+        bigint author_id "INDEX"
+        bigint thread_id "INDEX (nullable)"
+        varchar title
+        text content
+        date walk_date
+        varchar location
+        tinyint is_public
+        datetime created_at
+        datetime updated_at
+        datetime deleted_at
+    }
+
+    WALK_DIARY_PHOTO {
+        bigint id PK
+        varchar diary_id "INDEX"
+        varchar photo_url
+        int sort_order
+        datetime created_at
+    }
+
+    WALK_DIARY_TAG {
+        bigint id PK
+        varchar diary_id "INDEX"
+        bigint tagged_member_id "INDEX"
         datetime created_at
     }
     
@@ -354,6 +399,7 @@ erDiagram
 |------|------|------|
 | id | BIGINT | PK, 자동증가 |
 | email | VARCHAR(255) | 이메일 (고유) |
+| password_hash | VARCHAR(255) | 이메일 로그인용 비밀번호 해시 (소셜 전용 계정은 nullable) |
 | nickname | VARCHAR(50) | 닉네임 (최대 10자) |
 | profile_image_url | VARCHAR(500) | 프로필 이미지 URL |
 | age | INT | 나이 |
@@ -368,8 +414,8 @@ erDiagram
 | manner_score_count | INT | 받은 매너 점수 개수 |
 | status | VARCHAR(20) | 상태: ACTIVE, INACTIVE, BANNED |
 | is_verified | TINYINT(1) | 인증 완료 여부 |
-| social_provider | VARCHAR(20) | 소셜: NAVER, KAKAO, GOOGLE |
-| social_id | VARCHAR(255) | 소셜 고유 ID |
+| social_provider | VARCHAR(20) | 소셜: NAVER, KAKAO, GOOGLE (nullable) |
+| social_id | VARCHAR(255) | 소셜 고유 ID (nullable) |
 | created_at | DATETIME | 생성일시 |
 | updated_at | DATETIME | 수정일시 |
 
@@ -420,6 +466,22 @@ erDiagram
 
 **제약**
 - (member_id, personality_type_id) UNIQUE (중복 선택 방지)
+
+---
+
+### MEMBER_FOLLOW (회원 팔로우 관계)
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | BIGINT | PK |
+| follower_id | BIGINT | 팔로우한 회원 ID (INDEX) |
+| following_id | BIGINT | 팔로우 대상 회원 ID (INDEX) |
+| created_at | DATETIME | 생성일시 |
+
+**인덱스/제약**
+- `idx_follower_id`: follower_id
+- `idx_following_id`: following_id
+- `uk_follower_following`: follower_id, following_id (UNIQUE)
 
 ---
 
@@ -481,6 +543,62 @@ erDiagram
 - `idx_location`: latitude, longitude
 - `idx_start_time`: start_time
 - `idx_author_status`: author_id, status
+
+---
+
+### WALK_DIARY (산책 일기)
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | VARCHAR(36) | PK (예: wd_uuid) |
+| author_id | BIGINT | 작성자 ID (INDEX) |
+| thread_id | BIGINT | 연결 스레드 ID (nullable, INDEX) |
+| title | VARCHAR(100) | 일기 제목 |
+| content | TEXT | 일기 본문 |
+| walk_date | DATE | 산책 날짜 |
+| location | VARCHAR(200) | 장소명 |
+| is_public | TINYINT(1) | 공개 여부 |
+| created_at | DATETIME | 생성일시 |
+| updated_at | DATETIME | 수정일시 |
+| deleted_at | DATETIME | 소프트 삭제 시각 (nullable) |
+
+**인덱스**
+- `idx_author_id`: author_id
+- `idx_thread_id`: thread_id
+- `idx_author_walk_date`: author_id, walk_date
+- `idx_public_walk_date`: is_public, walk_date
+
+---
+
+### WALK_DIARY_PHOTO (산책 일기 사진)
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | BIGINT | PK |
+| diary_id | VARCHAR(36) | 산책 일기 ID (INDEX) |
+| photo_url | VARCHAR(500) | 이미지 URL |
+| sort_order | INT | 정렬 순서 |
+| created_at | DATETIME | 생성일시 |
+
+**인덱스**
+- `idx_diary_id`: diary_id
+- `idx_diary_sort`: diary_id, sort_order
+
+---
+
+### WALK_DIARY_TAG (산책 일기 태그)
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | BIGINT | PK |
+| diary_id | VARCHAR(36) | 산책 일기 ID (INDEX) |
+| tagged_member_id | BIGINT | 태그된 회원 ID (INDEX) |
+| created_at | DATETIME | 생성일시 |
+
+**인덱스/제약**
+- `idx_diary_id`: diary_id
+- `idx_tagged_member_id`: tagged_member_id
+- `uk_diary_tag_member`: diary_id, tagged_member_id (UNIQUE)
 
 ---
 
@@ -590,9 +708,13 @@ erDiagram
 | 테이블 | 인덱스 | 용도 |
 |--------|--------|------|
 | MEMBER | (social_provider, social_id) | 소셜 로그인 조회 |
+| MEMBER | (email) | 이메일 로그인 조회 |
+| MEMBER_FOLLOW | (follower_id, following_id) | 팔로우 중복 방지/관계 조회 |
 | PET | (member_id, is_main) | 메인 반려견 조회 |
 | THREAD | (status, walk_date) | 활성 스레드 날짜별 조회 |
 | THREAD | (latitude, longitude) | 위치 기반 검색 |
+| WALK_DIARY | (author_id, walk_date) | 작성자 일기 타임라인 조회 |
+| WALK_DIARY | (is_public, walk_date) | 공개 일기/스토리 조회 |
 | LOST_PET_REPORT | (last_seen_latitude, last_seen_longitude) | 위치 기반 검색 |
 | POST_LIKE | (post_id, member_id) | 좋아요 중복 방지 |
 | BLOCK | (blocker_id, blocked_id) | 차단 관계 조회 |
