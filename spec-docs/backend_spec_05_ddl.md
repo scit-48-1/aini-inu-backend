@@ -250,7 +250,7 @@ CREATE TABLE thread_filter (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='스레드 참가 조건 필터';
 
 CREATE TABLE walk_diary (
-    id VARCHAR(36) PRIMARY KEY COMMENT '산책 일기 ID (wd_uuid)',
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '산책 일기 ID',
     author_id BIGINT NOT NULL COMMENT '작성자 ID (member.id 참조)',
     thread_id BIGINT COMMENT '연결 스레드 ID (thread.id 참조, nullable)',
     title VARCHAR(100) NOT NULL COMMENT '일기 제목',
@@ -270,7 +270,7 @@ CREATE TABLE walk_diary (
 
 CREATE TABLE walk_diary_photo (
     id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '일기 사진 ID',
-    diary_id VARCHAR(36) NOT NULL COMMENT '산책 일기 ID (walk_diary.id 참조)',
+    diary_id BIGINT NOT NULL COMMENT '산책 일기 ID (walk_diary.id 참조)',
     photo_url VARCHAR(500) NOT NULL COMMENT '이미지 URL',
     sort_order INT NOT NULL DEFAULT 0 COMMENT '정렬 순서',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일시',
@@ -281,7 +281,7 @@ CREATE TABLE walk_diary_photo (
 
 CREATE TABLE walk_diary_tag (
     id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '일기 태그 ID',
-    diary_id VARCHAR(36) NOT NULL COMMENT '산책 일기 ID (walk_diary.id 참조)',
+    diary_id BIGINT NOT NULL COMMENT '산책 일기 ID (walk_diary.id 참조)',
     tagged_member_id BIGINT NOT NULL COMMENT '태그된 회원 ID (member.id 참조)',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일시',
     

@@ -17,11 +17,11 @@
 | D-004 | Diary 식별자 | `diaryId` 독립 엔티티 | Fixed |
 | D-005 | FOUND 유사매칭 | `GET /sightings/{sightingId}/similar-lost-pets` 신규 추가 | Fixed |
 | D-006 | Auth MVP | 이메일 로그인 기본 + 소셜은 유지(후순위) | Fixed |
-| D-007 | 가입/프로필 | `POST /members/signup` + `POST /members/profile` 분리 | Fixed |
+| D-007 | 가입/프로필 | `POST /members/signup` + `POST /members/profile` 분리 (가입 즉시 토큰 발급) | Fixed |
 | D-008 | 후기 API | `POST /chat-rooms/{chatRoomId}/reviews`로 통일 | Fixed |
 | D-009 | 팔로워/팔로잉 | 목록 API 신규 추가 (`SliceResponse`) | Fixed |
-| D-010 | Walk 통계 | `GET /members/me/stats/walk` (`number[]`) 신규 추가 | Fixed |
-| D-011 | Stories | Diary 기반 `GET /stories` 신규 추가 | Fixed |
+| D-010 | Walk 통계 | `GET /members/me/stats/walk` 고정 18주(`number[126]`) 반환 | Fixed |
+| D-011 | Stories | Diary 기반 `GET /stories` (팔로잉+공개+최신순 고정) | Fixed |
 | D-012 | Block 기능 | MVP 범위 제외 (`Excluded by Product Decision`) | Fixed |
 
 ---
@@ -114,4 +114,3 @@
    walk-confirm, leave, mine/list 계열, notifications, duplicate-check
 4. **제외**  
    Block 기능은 MVP 제외 상태 유지
-

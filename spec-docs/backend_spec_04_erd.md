@@ -207,7 +207,7 @@ erDiagram
     }
 
     WALK_DIARY {
-        varchar id PK
+        bigint id PK
         bigint author_id "INDEX"
         bigint thread_id "INDEX (nullable)"
         varchar title
@@ -222,7 +222,7 @@ erDiagram
 
     WALK_DIARY_PHOTO {
         bigint id PK
-        varchar diary_id "INDEX"
+        bigint diary_id "INDEX"
         varchar photo_url
         int sort_order
         datetime created_at
@@ -230,7 +230,7 @@ erDiagram
 
     WALK_DIARY_TAG {
         bigint id PK
-        varchar diary_id "INDEX"
+        bigint diary_id "INDEX"
         bigint tagged_member_id "INDEX"
         datetime created_at
     }
@@ -550,7 +550,7 @@ erDiagram
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
-| id | VARCHAR(36) | PK (예: wd_uuid) |
+| id | BIGINT | PK (AUTO_INCREMENT) |
 | author_id | BIGINT | 작성자 ID (INDEX) |
 | thread_id | BIGINT | 연결 스레드 ID (nullable, INDEX) |
 | title | VARCHAR(100) | 일기 제목 |
@@ -575,7 +575,7 @@ erDiagram
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
 | id | BIGINT | PK |
-| diary_id | VARCHAR(36) | 산책 일기 ID (INDEX) |
+| diary_id | BIGINT | 산책 일기 ID (INDEX) |
 | photo_url | VARCHAR(500) | 이미지 URL |
 | sort_order | INT | 정렬 순서 |
 | created_at | DATETIME | 생성일시 |
@@ -591,7 +591,7 @@ erDiagram
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
 | id | BIGINT | PK |
-| diary_id | VARCHAR(36) | 산책 일기 ID (INDEX) |
+| diary_id | BIGINT | 산책 일기 ID (INDEX) |
 | tagged_member_id | BIGINT | 태그된 회원 ID (INDEX) |
 | created_at | DATETIME | 생성일시 |
 

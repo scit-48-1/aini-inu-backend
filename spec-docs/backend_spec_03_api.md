@@ -283,7 +283,11 @@
     "email": "user@example.com",
     "nickname": "건홍이네",
     "memberType": "NON_PET_OWNER",
-    "createdAt": "2026-01-26T10:00:00+09:00"
+    "createdAt": "2026-01-26T10:00:00+09:00",
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
+    "tokenType": "Bearer",
+    "expiresIn": 3600
   }
 }
 ```
@@ -576,11 +580,8 @@
 
 **Endpoint**: `GET /members/me/stats/walk`
 
-**Query Parameters**
-
-| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
-|----------|------|------|--------|------|
-| weeks | integer | X | 18 | 통계 주차(칸) 수 |
+**설명**:
+- 최근 18주 기준 산책 활동 강도를 고정 길이 배열(`number[126]`)로 반환합니다.
 
 **Response (200 OK)**
 ```json
@@ -2301,7 +2302,7 @@
 
 **설명**:
 - 팔로잉한 회원의 공개 산책 일기(`walk-diary`)를 스토리 카드 형태로 조회합니다.
-- 최신순으로 최대 30개를 반환합니다.
+- 최신순으로 최대 30개를 반환합니다. (고정 규칙: `팔로잉 + 공개 + 최신순`)
 
 **Response (200 OK)**
 ```json
@@ -2310,7 +2311,7 @@
   "status": 200,
   "data": [
     {
-      "id": "wd_1001",
+      "id": 1001,
       "memberId": 2,
       "nickname": "뭉치맘",
       "profileImageUrl": "https://s3.../profile.jpg",
@@ -2698,7 +2699,7 @@
   "success": true,
   "status": 200,
   "data": {
-    "id": "wd_1001",
+    "id": 1001,
     "author": {
       "id": 1,
       "nickname": "건홍이네",
@@ -2744,7 +2745,7 @@
   "data": {
     "content": [
       {
-        "id": "wd_1001",
+        "id": 1001,
         "author": {
           "id": 1,
           "nickname": "건홍이네",
@@ -2819,7 +2820,7 @@
   "data": {
     "content": [
       {
-        "id": "wd_1002",
+        "id": 1002,
         "author": {
           "id": 2,
           "nickname": "뭉치맘",
