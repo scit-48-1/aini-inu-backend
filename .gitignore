@@ -35,7 +35,10 @@ out/
 
 ### VS Code ###
 .vscode/
+.DS_Store
 
 ### security ###
 *.pem
 .env
+
+
