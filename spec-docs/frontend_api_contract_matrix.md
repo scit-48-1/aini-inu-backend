@@ -1,75 +1,117 @@
-# Frontend-Backend API Contract Matrix (Draft v0.1)
+# Frontend-Backend API Contract Matrix (Master Draft v0.2)
 
 - 기준일: 2026-02-19
-- 정책: **Spec-First** (기본), 단 프론트 UX 유지 가치가 높으면 `Spec Update` 후보로 별도 분류
-- 범위: `Threads`, `Chat`, `LostPets`, `Diary`
-- 입력 소스:
-  - 프론트: `aini-inu-frontend/src/services/api/*`, `aini-inu-frontend/src/hooks/*`, `aini-inu-frontend/src/app/around-me/*`
-  - 스펙: `spec-docs/backend_spec_03_api.md`, `spec-docs/backend_spec_04_erd.md`, `spec-docs/backend_spec_05_ddl.md`
+- 정책: **Spec-First**
+- 범위: Auth, Member, Pet, Threads, Chat, LostPets, Diary, Community, Notifications, Uploads, Block
+- 원칙:
+  - 프론트 UI/UX는 최대한 유지
+  - 백엔드 스펙과 계약 불일치는 `Frontend Patch` / `Spec Update` / `Phase-2` / `Excluded`로 명시
 
-## Status 정의
+## 1) 결정 고정(Decision Fixed)
 
-- `Aligned`: 현재 프론트 호출과 스펙이 일치
-- `Frontend Patch`: 스펙 유지, 프론트 호출/매핑 수정 필요
-- `Spec Update`: 프론트 UX를 살리기 위해 스펙 신규/수정 필요
-- `Decision Needed`: 정책 결정 필요 (BE/FE 합의 후 확정)
-
----
-
-## Contract Matrix
-
-| Domain | Screen/Route | User Action | Current Frontend Call | Spec Endpoint | Request Mapping | Response Mapping | Gap Type | Decision Status | Owner | Notes |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Thread | `/around-me` | 주변 마커/목록 조회 | `GET /api/v1/threads?lat={lat}&lng={lng}` | `GET /threads/map?latitude&longitude` 또는 `GET /threads` | `lat/lng` → `latitude/longitude`로 변환 필요 | 프론트는 `Thread[]`, 스펙은 `map:list` 또는 `slice.content` | Path mismatch | Frontend Patch | FE | Q-TH-001 |
-| Thread | `/dashboard` | 모집글 미리보기 조회 | `GET /api/v1/threads` | `GET /threads` | page/size/sort 파라미터 누락 | 스펙은 `SliceResponse`, 프론트는 배열 가정 | Field mismatch | Frontend Patch | FE | Q-TH-002 |
-| Thread | `/around-me` | 모집글 생성 | `POST /api/v1/threads` | `POST /threads` | 프론트 body(`lat,lng,name,image,author...`) ↔ 스펙 body(`walkDate,startTime,endTime,location,petIds...`) 불일치 | 응답 필드도 구조 차이(`location object`, `pets`) | Field mismatch | Frontend Patch | FE | Q-TH-003 |
-| Thread | `/around-me` | 모집 참여 | `POST /api/v1/threads/{id}/join` | `POST /threads/{threadId}/apply` | `join` → `apply`, PET_OWNER는 `petIds` 필요 | 스펙 응답 `chatRoomId`를 프론트에서 미사용 | Path mismatch | Frontend Patch | FE | Q-TH-004 |
-| Thread/Chat | `/around-me` | 참여 후 채팅 진입 | `POST /api/v1/chat/rooms { partnerId }` | `POST /threads/{threadId}/apply` 결과 `chatRoomId` 사용 | 프론트는 partnerId 기반 직접 DM 생성 시도 | 스펙은 apply/match 기반 채팅방 생성 | Missing endpoint | Decision Needed | BE+FE | Q-TH-005 |
-| Thread | `/dashboard` | 핫스팟 조회 | `GET /api/v1/threads/hotspot?hours=3` | (해당 엔드포인트 없음) | 프론트 기능 유지 시 신규 스펙 필요 | - | Missing endpoint | Decision Needed | BE | Q-TH-006 |
-| Chat | `/chat` | 채팅방 목록 조회 | `GET /api/v1/chat/rooms` | `GET /chat-rooms` | 경로 `/chat/rooms` ↔ `/chat-rooms` | 프론트 `ChatRoom[]` 가정, 스펙은 `PageResponse.content` | Path mismatch | Frontend Patch | FE | Q-CH-001 |
-| Chat | `/chat/[id]` | 채팅방 상세 조회 | (별도 상세 호출 없음) `getRooms()` 후 클라이언트 find | `GET /chat-rooms/{chatRoomId}` | 상세 전용 API 미사용 | 프론트 `partner` 중심 모델, 스펙은 `participants[]`/`thread` | Missing UX action | Frontend Patch | FE | Q-CH-002 |
-| Chat | `/chat/[id]` | 메시지 목록 조회 | `GET /api/v1/chat/rooms/{id}/messages` | `GET /chat-rooms/{chatRoomId}/messages` | 경로 불일치 + cursor 파라미터 미사용 | 프론트 배열 가정, 스펙은 `{content,nextCursor,hasMore}` | Path mismatch | Frontend Patch | FE | Q-CH-003 |
-| Chat | `/chat/[id]` | 메시지 전송 | `POST /api/v1/chat/rooms/{id}/messages` | `POST /chat-rooms/{chatRoomId}/messages` | 경로 불일치 | 응답 필드(`content`,`sentAt`)를 프론트 모델(`text`,`timestamp`)로 변환 필요 | Path mismatch | Frontend Patch | FE | Q-CH-004 |
-| Chat | `/around-me` | 이웃과 바로 채팅 | `POST /api/v1/chat/rooms {partnerId}` | (직접 생성 스펙 없음) | 스펙상 채팅방 생성 트리거는 `apply` 또는 `lost-pets/{id}/match` | - | Missing endpoint | Decision Needed | BE+FE | Q-CH-005 |
-| LostPets | `/around-me` (LOST) | 실종 신고 등록 | 현재 `POST /api/v1/threads`(isEmergency) 재사용 | `POST /lost-pets` | 도메인 자체 불일치(threads vs lost-pets) | 스펙은 `lostPetId/status/similarSightingsCount` 반환 | Missing endpoint | Frontend Patch | FE | Q-LP-001 |
-| LostPets | `/around-me` (FOUND) | 발견 제보 등록 | 현재 `POST /api/v1/threads`(isEmergency) 재사용 | `POST /sightings` | 도메인 자체 불일치(threads vs sightings) | 스펙은 `sightingId/potentialMatchCount` 반환 | Missing endpoint | Frontend Patch | FE | Q-LP-002 |
-| LostPets/AI | `/around-me` | 사진 AI 분석 | `POST http://localhost:8080/api/v1/pets/analyze` | (해당 엔드포인트 없음) | 절대 URL + 비스펙 API | 반환 스키마도 미정 | Missing endpoint | Decision Needed | BE | Q-LP-003 |
-| LostPets | `/around-me` | 유사 후보 조회 | 현재 mock 배열 생성 | `GET /lost-pets/{lostPetId}/similar-sightings` | LOST 흐름은 스펙 API로 대체 가능 | 프론트는 단순 `matchRate`, 스펙은 `similarityScore(total/image/location/time)` | Missing UX action | Frontend Patch | FE | Q-LP-004 |
-| LostPets | `/around-me` | “이 아이예요” 후 대화 시작 | 현재 `POST /api/v1/chat/rooms` | `POST /lost-pets/{lostPetId}/match` | `match` 호출 후 `chatRoomId`로 이동 필요 | 스펙 응답 `chatRoomId` 제공 | Missing endpoint | Frontend Patch | FE | Q-LP-005 |
-| Diary | `/feed` | 팔로잉 일기 조회 | `GET /api/v1/walk-diaries/following` | (스펙 없음) | 신규 Diary 스펙 필요 | - | Missing endpoint | Spec Update | BE | Q-DI-001 |
-| Diary | `/profile`, `/dashboard` | 멤버 일기 조회 | `GET /api/v1/walk-diaries?memberId=` | (스펙 없음) | 신규 Diary 스펙 필요 | - | Missing endpoint | Spec Update | BE | Q-DI-002 |
-| Diary | `DiaryModal` | 일기 저장 | `POST /api/v1/walk-diaries/{id}` | (스펙 없음) | `{id}` 의미(일기ID/스레드ID) 미정 | draft/public/tags/photos 모델 미정 | Missing endpoint | Decision Needed | BE+FE | Q-DI-003 |
+| ID | 결정 항목 | 확정 값 | 상태 |
+|---|---|---|---|
+| D-001 | 직접 DM 생성 API | 미허용 (`apply/match` 기반만 허용) | Fixed |
+| D-002 | 핫스팟 API | `GET /threads/hotspot` 신규 추가 | Fixed |
+| D-003 | 분석 프리뷰 API | `POST /lost-pets/analyze` 신규 추가 | Fixed |
+| D-004 | Diary 식별자 | `diaryId` 독립 엔티티 | Fixed |
+| D-005 | FOUND 유사매칭 | `GET /sightings/{sightingId}/similar-lost-pets` 신규 추가 | Fixed |
+| D-006 | Auth MVP | 이메일 로그인 기본 + 소셜은 유지(후순위) | Fixed |
+| D-007 | 가입/프로필 | `POST /members/signup` + `POST /members/profile` 분리 | Fixed |
+| D-008 | 후기 API | `POST /chat-rooms/{chatRoomId}/reviews`로 통일 | Fixed |
+| D-009 | 팔로워/팔로잉 | 목록 API 신규 추가 (`SliceResponse`) | Fixed |
+| D-010 | Walk 통계 | `GET /members/me/stats/walk` (`number[]`) 신규 추가 | Fixed |
+| D-011 | Stories | Diary 기반 `GET /stories` 신규 추가 | Fixed |
+| D-012 | Block 기능 | MVP 범위 제외 (`Excluded by Product Decision`) | Fixed |
 
 ---
 
-## 미사용(하지만 스펙에 존재) API 후보
+## 2) 프론트 호출 기준 불일치 (FE → Spec)
 
-- Threads: `DELETE /threads/{threadId}/apply`, `GET /threads/check-duplicate`
-- Chat: `DELETE /chat-rooms/{chatRoomId}/leave`, `POST/GET/DELETE /chat-rooms/{chatRoomId}/walk-confirm`, `POST /chat-rooms/{chatRoomId}/reviews`, `GET /chat-rooms/{chatRoomId}/reviews/me`
-- LostPets: `GET /lost-pets/mine`, `PATCH /lost-pets/{lostPetId}/close`, `GET /sightings/mine`, `GET /sightings/{sightingId}`, `DELETE /sightings/{sightingId}`
+| Domain | Screen/Route | User Action | Current Frontend Call | Target Contract | Gap Type | Status | Notes |
+|---|---|---|---|---|---|---|---|
+| Auth | `/login` | 이메일 로그인 | `POST /auth/login` | **신규** `POST /auth/login` | Missing endpoint | Spec Update | MVP 핵심 |
+| Auth | `/signup` | 회원가입 | `POST /members/signup` | **신규** `POST /members/signup` | Missing endpoint | Spec Update | 최소 필수 필드 |
+| Auth | `/signup` | 이메일 인증코드 전송 | `POST /auth/email/send` | Phase-2 | Missing endpoint | Frontend Patch | MVP에서 UI 제거/비활성 |
+| Auth | `/signup` | 이메일 인증코드 검증 | `POST /auth/email/verify` | Phase-2 | Missing endpoint | Frontend Patch | MVP에서 UI 제거/비활성 |
+| Member/Pet | 공통 | 내 반려견 목록 | `GET /members/me/dogs` | `GET /pets` | Path mismatch | Frontend Patch | 스펙 경로로 통일 |
+| Member/Pet | 프로필 | 타인 반려견 목록 | `GET /members/{id}/dogs` | **신규** `GET /members/{memberId}/pets` | Missing endpoint | Spec Update | 프로필 UX 유지 |
+| Member/Pet | 프로필 | 반려견 등록 | `POST /members/me/dogs` | `POST /pets` | Path mismatch | Frontend Patch | |
+| Member/Pet | 프로필 | 반려견 삭제 | `DELETE /members/me/dogs/{id}` | `DELETE /pets/{petId}` | Path mismatch | Frontend Patch | |
+| Member | 프로필 | 팔로워 목록 | `GET /members/me/followers` | **신규** `GET /members/me/followers` | Missing endpoint | Spec Update | SliceResponse |
+| Member | 프로필 | 팔로잉 목록 | `GET /members/me/following` | **신규** `GET /members/me/following` | Missing endpoint | Spec Update | SliceResponse |
+| Member | 대시보드 | 산책 통계 | `GET /members/me/stats/walk` | **신규** `GET /members/me/stats/walk` | Missing endpoint | Spec Update | `number[]` |
+| Member/Chat | 대시보드 | 후기 작성 | `POST /members/{partnerId}/reviews` | `POST /chat-rooms/{chatRoomId}/reviews` | Contract mismatch | Frontend Patch | 채팅방 기반으로 변경 |
+| Threads | `/around-me` | 지도 스레드 조회 | `GET /threads?lat&lng` | `GET /threads/map?latitude&longitude` | Field mismatch | Frontend Patch | 파라미터명 변환 |
+| Threads | `/around-me` | 스레드 참여 | `POST /threads/{id}/join` | `POST /threads/{threadId}/apply` | Path mismatch | Frontend Patch | `petIds` 처리 필요 |
+| Threads | `/dashboard` | 핫스팟 조회 | `GET /threads/hotspot?hours` | **신규** `GET /threads/hotspot` | Missing endpoint | Spec Update | Top1 `{region,count}` |
+| Threads | `/around-me` | 스레드 생성 | `POST /threads` (프론트 body) | `POST /threads` (스펙 body) | Field mismatch | Frontend Patch | request schema 정렬 |
+| Chat | `/chat` | 채팅방 목록 | `GET /chat/rooms` | `GET /chat-rooms` | Path mismatch | Frontend Patch | PageResponse 매핑 |
+| Chat | `/chat/[id]` | 메시지 목록 | `GET /chat/rooms/{id}/messages` | `GET /chat-rooms/{id}/messages` | Path mismatch | Frontend Patch | cursor pagination 반영 |
+| Chat | `/chat/[id]` | 메시지 전송 | `POST /chat/rooms/{id}/messages` | `POST /chat-rooms/{id}/messages` | Path mismatch | Frontend Patch | |
+| Chat | `/around-me` | 이웃과 바로 대화 시작 | `POST /chat/rooms {partnerId}` | 사용 금지 (`apply/match` 경유) | Policy mismatch | Frontend Patch | D-001 |
+| LostPets | `/around-me` LOST | 실종 등록 | (현재) `POST /threads` emergency 재사용 | `POST /lost-pets` | Domain mismatch | Frontend Patch | 도메인 분리 필수 |
+| LostPets | `/around-me` FOUND | 제보 등록 | (현재) `POST /threads` emergency 재사용 | `POST /sightings` | Domain mismatch | Frontend Patch | |
+| LostPets | `/around-me` | 사진 사전 분석 | `POST http://localhost:8080/api/v1/pets/analyze` | **신규** `POST /lost-pets/analyze` | Endpoint mismatch | Spec Update + Frontend Patch | 절대 URL 제거 |
+| LostPets | `/around-me` FOUND | 유사 실종 목록 | (mock 생성) | **신규** `GET /sightings/{sightingId}/similar-lost-pets` | Missing endpoint | Spec Update | D-005 |
+| LostPets | `/around-me` LOST | 유사 제보 목록 | (mock 생성) | `GET /lost-pets/{lostPetId}/similar-sightings` | Missing UX action | Frontend Patch | 스펙 API 연동 |
+| LostPets | `/around-me` | “이 아이예요” 후 채팅 | (현재) 직접 chat room 생성 | `POST /lost-pets/{lostPetId}/match` | Flow mismatch | Frontend Patch | `chatRoomId` 사용 |
+| Diary | `/feed` | 팔로잉 일기 목록 | `GET /walk-diaries/following` | **신규 Diary API** | Missing endpoint | Spec Update | |
+| Diary | `/profile`,`/dashboard` | 멤버 일기 목록 | `GET /walk-diaries?memberId` | **신규 Diary API** | Missing endpoint | Spec Update | |
+| Diary | `DiaryModal` | 일기 저장 | `POST /walk-diaries/{id}` | **신규 Diary API** | Missing endpoint | Spec Update | `diaryId` 기준 |
+| Community | `/feed` | 게시물 목록 | `GET /posts?memberId&location` | `GET /posts` + 필터 확장 | Field mismatch | Spec Update + Frontend Patch | member/location 쿼리 추가 권장 |
+| Community | `/feed` | 게시물 생성 | `POST /posts` (`caption`,`images`,`location`) | `POST /posts` (`content`,`imageUrls`) | Field mismatch | Frontend Patch | DTO 정렬 |
+| Community | `/feed` | 게시물 수정 | `PUT /posts/{id}` | `PATCH /posts/{postId}` | Method mismatch | Frontend Patch | |
+| Community | `/feed` | 댓글 목록 조회 | `GET /posts/{id}/comments` | **신규** `GET /posts/{postId}/comments` | Missing endpoint | Spec Update | |
+| Community | `/feed` | 스토리 조회 | `GET /stories` | **신규** `GET /stories` | Missing endpoint | Spec Update | Diary 기반 |
 
 ---
 
-## 우선순위 실행안 (초안)
+## 3) 백엔드 스펙 기준 미연동 (Spec → FE)
 
-1. **P0 (즉시)**: 경로/응답 형태가 명확한 `Frontend Patch`부터 정리  
-   - `/chat/rooms` → `/chat-rooms` 계열  
-   - `/threads/{id}/join` → `/threads/{id}/apply`  
-   - `slice/content` 응답 어댑터 추가
-2. **P1 (정책 결정)**: `Decision Needed` 항목 확정  
-   - 직접 DM 허용 여부  
-   - `threads/hotspot` 유지 여부  
-   - `pets/analyze` API 신설 여부
-3. **P2 (신규 스펙)**: Diary API/ERD/DDL 신설 및 계약 확정  
-   - `Q-DI-001~003` 우선 결정 후 문서 반영
+| Domain | Spec Endpoint | FE 상태 | 분류 | 비고 |
+|---|---|---|---|---|
+| Auth | `POST /auth/refresh` | 미연동 | MVP Included | 토큰 재발급 로직 추가 필요 |
+| Auth | `POST /auth/logout` | 미연동 | MVP Included | 로그아웃 시 리프레시 폐기 |
+| Threads | `DELETE /threads/{threadId}/apply` | 미연동 | Phase-2 | 참가 취소 UX 추가 |
+| Threads | `GET /threads/check-duplicate` | 미연동 | Phase-2 | 모집 생성 UX 고도화 시 반영 |
+| Chat | `GET /chat-rooms/{chatRoomId}` | 간접/부분 사용 | Frontend Patch | 상세 API 직접 사용으로 전환 |
+| Chat | `DELETE /chat-rooms/{chatRoomId}/leave` | 미연동 | Phase-2 | 채팅방 나가기 버튼 필요 |
+| Chat | `POST/GET/DELETE /chat-rooms/{chatRoomId}/walk-confirm` | 미연동 | Phase-2 | 1:1 확정 UX 미구성 |
+| Chat | `GET /chat-rooms/{chatRoomId}/reviews/me` | 미연동 | Phase-2 | 후기 이력 UI 미구성 |
+| LostPets | `GET /lost-pets/mine` | 미연동 | Phase-2 | 마이 신고 목록 페이지 필요 |
+| LostPets | `PATCH /lost-pets/{lostPetId}/close` | 미연동 | Phase-2 | 신고 종료 UX 필요 |
+| LostPets | `GET /sightings/mine` | 미연동 | Phase-2 | 제보 목록 페이지 필요 |
+| LostPets | `GET /sightings/{sightingId}` | 미연동 | Phase-2 | 제보 상세 화면 필요 |
+| LostPets | `DELETE /sightings/{sightingId}` | 미연동 | Phase-2 | 제보 삭제 UX 필요 |
+| Notifications | `GET /notifications` 외 4개 | 미연동 | Phase-2 | 알림센터 UI 미구성 |
+| Uploads | `POST /images/presigned-url` | 미연동 | MVP Included | Post/Diary/LostPets 업로드 표준화 필요 |
+| Block | `POST/GET/DELETE /blocks*` | 미연동 | Excluded | Product 결정으로 MVP 제외 |
 
 ---
 
-## 사용자 확인 필요 항목 (답변 요청)
+## 4) Diary 신규 계약(초안 범위)
 
-1. `Q-TH-005`, `Q-CH-005`: 스펙 외 **직접 DM 생성 API**를 허용할지, 아니면 `apply/match` 기반만 허용할지?
-2. `Q-TH-006`: 대시보드 핫스팟(`threads/hotspot`)을 **신규 스펙으로 추가**할지, 아니면 프론트 기능을 제거/대체할지?
-3. `Q-LP-003`: `POST /pets/analyze`를 백엔드 정식 API로 채택할지? 채택 시 입력/출력 스키마 확정 필요.
-4. `Q-DI-003`: `POST /walk-diaries/{id}`의 `{id}`를 **threadId**로 쓸지 **diaryId**로 분리할지? (현재 스펙 문서엔 diary 엔티티 자체가 없음)
-5. `Q-LP-004`: FOUND 제보자 화면에서도 유사 매칭 리스트를 보여줄지? 필요하면 `sighting -> lost-pets` 조회 API 신규 정의 필요.
+- 엔드포인트 신규 추가 대상
+  - `POST /walk-diaries`
+  - `GET /walk-diaries`
+  - `GET /walk-diaries/{diaryId}`
+  - `PATCH /walk-diaries/{diaryId}`
+  - `DELETE /walk-diaries/{diaryId}`
+  - `GET /walk-diaries/following`
+- 핵심 필드(초안)
+  - `id(diaryId)`, `author`, `title`, `content`, `photoUrls`, `walkDate`, `location`, `isPublic`, `tags`, `createdAt`, `updatedAt`
+
+---
+
+## 5) 우선순위 실행 순서
+
+1. **P0 (계약 고정 + 스펙 추가)**  
+   Auth(email MVP), Member 확장(follow/stats), Threads hotspot, LostPets analyze/found-similar, Diary, Community stories/comments
+2. **P1 (프론트 경로/메서드 정렬)**  
+   `join→apply`, `chat/rooms→chat-rooms`, `PUT→PATCH`, DTO 매핑 정렬
+3. **P2 (미연동 기능 반영)**  
+   walk-confirm, leave, mine/list 계열, notifications, duplicate-check
+4. **제외**  
+   Block 기능은 MVP 제외 상태 유지
 
