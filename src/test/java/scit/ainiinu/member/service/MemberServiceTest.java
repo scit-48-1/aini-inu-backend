@@ -11,10 +11,12 @@ import org.springframework.test.util.ReflectionTestUtils;
 import scit.ainiinu.member.dto.request.MemberCreateRequest;
 import scit.ainiinu.member.dto.response.MemberResponse;
 import scit.ainiinu.member.entity.Member;
+import scit.ainiinu.member.entity.MemberPersonality;
 import scit.ainiinu.member.entity.MemberPersonalityType;
 import scit.ainiinu.member.entity.enums.Gender;
 import scit.ainiinu.member.exception.MemberErrorCode;
 import scit.ainiinu.member.exception.MemberException;
+import scit.ainiinu.member.repository.MemberFollowRepository;
 import scit.ainiinu.member.repository.MemberPersonalityRepository;
 import scit.ainiinu.member.repository.MemberPersonalityTypeRepository;
 import scit.ainiinu.member.repository.MemberRepository;
@@ -43,6 +45,9 @@ class MemberServiceTest {
     @Mock
     private MemberPersonalityRepository memberPersonalityRepository;
 
+    @Mock
+    private MemberFollowRepository memberFollowRepository;
+
     @Nested
     @DisplayName("프로필 생성")
     class CreateProfile {
@@ -70,6 +75,10 @@ class MemberServiceTest {
             given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
             given(memberRepository.existsByNickname("새닉네임")).willReturn(false);
             given(memberPersonalityTypeRepository.findAllById(any())).willReturn(List.of(type1, type2));
+            given(memberPersonalityRepository.findByMember(member)).willReturn(List.of(
+                    MemberPersonality.builder().member(member).personalityType(type1).build(),
+                    MemberPersonality.builder().member(member).personalityType(type2).build()
+            ));
 
             // when
             MemberResponse response = memberService.createProfile(memberId, request);

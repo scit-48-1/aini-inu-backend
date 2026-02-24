@@ -153,11 +153,21 @@ public class Pet extends BaseTimeEntity {
     }
 
     public void updateBasicInfo(String name, Integer age, Boolean isNeutered, String mbti, String photoUrl) {
-        this.name = name;
-        this.age = age;
-        this.isNeutered = isNeutered;
-        this.mbti = mbti;
-        this.photoUrl = photoUrl;
+        if (name != null && !name.isBlank()) {
+            this.name = name;
+        }
+        if (age != null) {
+            this.age = age;
+        }
+        if (isNeutered != null) {
+            this.isNeutered = isNeutered;
+        }
+        if (mbti != null) {
+            this.mbti = mbti;
+        }
+        if (photoUrl != null) {
+            this.photoUrl = photoUrl;
+        }
     }
 
     public void clearPersonalities() {
@@ -175,4 +185,3 @@ public class Pet extends BaseTimeEntity {
     }
 
 }
-

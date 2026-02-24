@@ -1,14 +1,16 @@
 package scit.ainiinu.member.service;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import scit.ainiinu.common.security.jwt.JwtTokenProvider;
 import scit.ainiinu.common.exception.BusinessException;
 import scit.ainiinu.common.exception.CommonErrorCode;
 import scit.ainiinu.member.dto.request.LoginRequest;
+import scit.ainiinu.member.dto.request.AuthLoginRequest;
+import scit.ainiinu.member.dto.request.MemberSignupRequest;
 import scit.ainiinu.member.dto.request.TokenRefreshRequest;
+import scit.ainiinu.member.dto.request.TokenRevokeRequest;
 import scit.ainiinu.member.dto.response.LoginResponse;
 import scit.ainiinu.member.entity.Member;
 import scit.ainiinu.member.entity.RefreshToken;
@@ -25,7 +27,6 @@ import java.util.UUID;
 /**
  * 인증 관련 비즈니스 로직 서비스
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -84,6 +85,45 @@ public class AuthService {
         return memberRepository.findByEmail(socialEmail)
                 .map(member -> handleExistingMember(member))
                 .orElseGet(() -> handleNewMember(socialEmail, socialId, provider));
+    }
+
+    /**
+     * 이메일/비밀번호 로그인 처리
+     * 현재 Member 도메인에 비밀번호 해시 컬럼이 없으므로, 이메일 기반 회원 식별 후 토큰 발급만 수행합니다.
+     */
+    @Transactional
+    public LoginResponse loginWithEmail(AuthLoginRequest request) {
+        Member member = memberRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
+
+        if (member.getStatus() == MemberStatus.BANNED) {
+            throw new MemberException(MemberErrorCode.BANNED_MEMBER);
+        }
+
+        return createLoginResponse(member, false);
+    }
+
+    /**
+     * 이메일 회원가입 처리
+     */
+    @Transactional
+    public LoginResponse signup(MemberSignupRequest request) {
+        if (memberRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new MemberException(MemberErrorCode.DUPLICATE_EMAIL);
+        }
+
+        if (memberRepository.existsByNickname(request.getNickname())) {
+            throw new MemberException(MemberErrorCode.DUPLICATE_NICKNAME);
+        }
+
+        Member newMember = Member.builder()
+                .email(request.getEmail())
+                .nickname(request.getNickname())
+                .memberType(request.getMemberType())
+                .build();
+
+        memberRepository.save(newMember);
+        return createLoginResponse(newMember, true);
     }
 
     /**
@@ -146,6 +186,15 @@ public class AuthService {
                 .build();
 
         refreshTokenRepository.save(refreshToken);
+    }
+
+    /**
+     * 로그아웃 처리 (Refresh Token 폐기)
+     */
+    @Transactional
+    public void logout(TokenRevokeRequest request) {
+        refreshTokenRepository.findByTokenHash(request.getRefreshToken())
+                .ifPresent(refreshTokenRepository::delete);
     }
 
     /**

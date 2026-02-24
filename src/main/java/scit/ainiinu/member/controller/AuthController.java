@@ -10,8 +10,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import scit.ainiinu.common.response.ApiResponse;
 import scit.ainiinu.common.security.annotation.Public;
+import scit.ainiinu.member.dto.request.AuthLoginRequest;
 import scit.ainiinu.member.dto.request.LoginRequest;
 import scit.ainiinu.member.dto.request.TokenRefreshRequest;
+import scit.ainiinu.member.dto.request.TokenRevokeRequest;
 import scit.ainiinu.member.dto.response.LoginResponse;
 import scit.ainiinu.member.entity.enums.SocialProvider;
 import scit.ainiinu.member.service.AuthService;
@@ -35,13 +37,24 @@ public class AuthController {
      */
     @Public
     @PostMapping("/login/{provider}")
-    public ResponseEntity<ApiResponse<LoginResponse>> login(
+    public ResponseEntity<ApiResponse<LoginResponse>> socialLogin(
             @PathVariable("provider") String provider,
             @Valid @RequestBody LoginRequest request
     ) {
         SocialProvider socialProvider = SocialProvider.valueOf(provider.toUpperCase());
         LoginResponse response = authService.login(socialProvider, request);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 이메일 로그인 API
+     */
+    @Public
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<LoginResponse>> login(
+            @Valid @RequestBody AuthLoginRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(authService.loginWithEmail(request)));
     }
 
     /**
@@ -54,5 +67,16 @@ public class AuthController {
             @Valid @RequestBody TokenRefreshRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.success(authService.refresh(request)));
+    }
+
+    /**
+     * 로그아웃 API
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @Valid @RequestBody TokenRevokeRequest request
+    ) {
+        authService.logout(request);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

@@ -29,9 +29,10 @@
 - **Test:** `./gradlew test`
 
 ## Documentation & Skills
-- **Specifications:** Detailed specs are located in `../common-docs/backend/`.
-    - `../common-docs/backend/spec_v4.2.md`: General Planning & Requirements
-    - `../common-docs/backend/backend_spec_03_api.md`: API Specification
+- **Specifications:** Canonical specs are located in `../common-docs/`.
+    - `../common-docs/FEATURE_SPEC.md`: Product Features & Requirements
+    - `../common-docs/API_SPEC.md`: API Contract (Single Source of Truth)
+    - `../common-docs/DETAIL_SPEC.md`: Data Model / ERD / DDL Mapping
 - **Gemini Skills:** Specialized agents are available in `.gemini/skills/` to assist with:
     - `spring-backend-generator`: Generating boilerplate code (Entity, DTO, Controller, Service).
     - `spring-test-generator`: Creating Unit and Integration tests.

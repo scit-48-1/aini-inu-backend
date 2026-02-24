@@ -16,7 +16,9 @@ import scit.ainiinu.common.security.resolver.CurrentMemberArgumentResolver;
 import scit.ainiinu.member.dto.request.MemberCreateRequest;
 import scit.ainiinu.member.dto.response.MemberResponse;
 import scit.ainiinu.member.entity.enums.Gender;
+import scit.ainiinu.member.service.AuthService;
 import scit.ainiinu.member.service.MemberService;
+import scit.ainiinu.pet.service.PetService;
 
 import java.util.ArrayList;
 
@@ -40,6 +42,12 @@ class MemberControllerTest {
 
     @MockitoBean
     private MemberService memberService;
+
+    @MockitoBean
+    private PetService petService;
+
+    @MockitoBean
+    private AuthService authService;
 
     @MockitoBean
     private JwtAuthInterceptor jwtAuthInterceptor;

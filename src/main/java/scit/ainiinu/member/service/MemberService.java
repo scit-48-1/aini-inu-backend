@@ -1,22 +1,34 @@
 package scit.ainiinu.member.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import scit.ainiinu.common.exception.BusinessException;
+import scit.ainiinu.common.exception.CommonErrorCode;
+import scit.ainiinu.common.response.SliceResponse;
 import scit.ainiinu.member.dto.request.MemberCreateRequest;
+import scit.ainiinu.member.dto.request.MemberProfilePatchRequest;
+import scit.ainiinu.member.dto.response.FollowStatusResponse;
+import scit.ainiinu.member.dto.response.MemberFollowResponse;
 import scit.ainiinu.member.dto.response.MemberPersonalityTypeResponse;
 import scit.ainiinu.member.dto.response.MemberResponse;
 import scit.ainiinu.member.entity.Member;
+import scit.ainiinu.member.entity.MemberFollow;
 import scit.ainiinu.member.entity.MemberPersonality;
 import scit.ainiinu.member.entity.MemberPersonalityType;
 import scit.ainiinu.member.exception.MemberErrorCode;
 import scit.ainiinu.member.exception.MemberException;
+import scit.ainiinu.member.repository.MemberFollowRepository;
 import scit.ainiinu.member.repository.MemberPersonalityRepository;
 import scit.ainiinu.member.repository.MemberPersonalityTypeRepository;
 import scit.ainiinu.member.repository.MemberRepository;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +39,7 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final MemberPersonalityTypeRepository memberPersonalityTypeRepository;
     private final MemberPersonalityRepository memberPersonalityRepository;
+    private final MemberFollowRepository memberFollowRepository;
 
     /**
      * 회원가입 완료 (프로필 생성)
@@ -37,8 +50,7 @@ public class MemberService {
      */
     @Transactional
     public MemberResponse createProfile(Long memberId, MemberCreateRequest request) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
+        Member member = findMember(memberId);
 
         // 닉네임 중복 검사 (현재 닉네임과 다를 경우에만)
         if (!member.getNickname().equals(request.getNickname()) &&
@@ -50,7 +62,7 @@ public class MemberService {
         member.updateProfile(
                 request.getNickname(),
                 request.getProfileImageUrl(),
-                null, // linkedNickname은 초기 생성 시 null
+                request.getLinkedNickname(),
                 request.getAge(),
                 request.getGender(),
                 request.getMbti(),
@@ -59,9 +71,88 @@ public class MemberService {
         );
 
         // 성격 유형 매핑 저장
-        List<MemberPersonalityTypeResponse> personalityTypeResponses = updateMemberPersonalities(member, request.getPersonalityTypeIds());
+        updateMemberPersonalities(member, request.getPersonalityTypeIds());
+        return toMemberResponse(member);
+    }
 
-        return MemberResponse.from(member, personalityTypeResponses);
+    public MemberResponse getMyProfile(Long memberId) {
+        Member member = findMember(memberId);
+        return toMemberResponse(member);
+    }
+
+    public MemberResponse getMemberProfile(Long memberId) {
+        Member member = findMember(memberId);
+        return toMemberResponse(member);
+    }
+
+    @Transactional
+    public MemberResponse updateMyProfile(Long memberId, MemberProfilePatchRequest request) {
+        Member member = findMember(memberId);
+
+        if (request.getNickname() != null
+                && !request.getNickname().equals(member.getNickname())
+                && memberRepository.existsByNickname(request.getNickname())) {
+            throw new MemberException(MemberErrorCode.DUPLICATE_NICKNAME);
+        }
+
+        member.updateProfile(
+                request.getNickname(),
+                request.getProfileImageUrl(),
+                request.getLinkedNickname(),
+                request.getAge(),
+                request.getGender(),
+                request.getMbti(),
+                request.getPersonality(),
+                request.getSelfIntroduction()
+        );
+
+        if (request.getPersonalityTypeIds() != null) {
+            updateMemberPersonalities(member, request.getPersonalityTypeIds());
+        }
+
+        return toMemberResponse(member);
+    }
+
+    public SliceResponse<MemberFollowResponse> getFollowers(Long memberId, Pageable pageable) {
+        Slice<MemberFollow> follows = memberFollowRepository.findAllByFollowingIdOrderByCreatedAtDesc(memberId, pageable);
+        return mapFollowSlice(follows, MemberFollow::getFollowerId);
+    }
+
+    public SliceResponse<MemberFollowResponse> getFollowing(Long memberId, Pageable pageable) {
+        Slice<MemberFollow> follows = memberFollowRepository.findAllByFollowerIdOrderByCreatedAtDesc(memberId, pageable);
+        return mapFollowSlice(follows, MemberFollow::getFollowingId);
+    }
+
+    @Transactional
+    public FollowStatusResponse follow(Long memberId, Long targetId) {
+        if (memberId.equals(targetId)) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+
+        findMember(memberId);
+        findMember(targetId);
+
+        memberFollowRepository.findByFollowerIdAndFollowingId(memberId, targetId)
+                .orElseGet(() -> memberFollowRepository.save(
+                        MemberFollow.builder()
+                                .followerId(memberId)
+                                .followingId(targetId)
+                                .build()
+                ));
+
+        return new FollowStatusResponse(true);
+    }
+
+    @Transactional
+    public FollowStatusResponse unfollow(Long memberId, Long targetId) {
+        memberFollowRepository.findByFollowerIdAndFollowingId(memberId, targetId)
+                .ifPresent(memberFollowRepository::delete);
+        return new FollowStatusResponse(false);
+    }
+
+    public int[] getWalkStats(Long memberId) {
+        findMember(memberId);
+        return new int[126];
     }
 
     private List<MemberPersonalityTypeResponse> updateMemberPersonalities(Member member, List<Long> typeIds) {
@@ -95,8 +186,7 @@ public class MemberService {
      */
     @Transactional
     public void upgradeToPetOwner(Long memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
+        Member member = findMember(memberId);
         member.upgradeToPetOwner();
     }
 
@@ -106,8 +196,43 @@ public class MemberService {
      */
     @Transactional
     public void downgradeToNonPetOwner(Long memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
+        Member member = findMember(memberId);
         member.downgradeToNonPetOwner();
+    }
+
+    private Member findMember(Long memberId) {
+        return memberRepository.findById(memberId)
+                .orElseThrow(() -> new MemberException(MemberErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    private MemberResponse toMemberResponse(Member member) {
+        List<MemberPersonalityTypeResponse> personalityTypeResponses = memberPersonalityRepository.findByMember(member).stream()
+                .map(memberPersonality -> MemberPersonalityTypeResponse.from(memberPersonality.getPersonalityType()))
+                .collect(Collectors.toList());
+
+        return MemberResponse.from(member, personalityTypeResponses);
+    }
+
+    private SliceResponse<MemberFollowResponse> mapFollowSlice(
+            Slice<MemberFollow> follows,
+            Function<MemberFollow, Long> targetMemberIdExtractor
+    ) {
+        List<Long> memberIds = follows.getContent().stream()
+                .map(targetMemberIdExtractor)
+                .collect(Collectors.toList());
+
+        Map<Long, Member> memberMap = memberRepository.findAllById(memberIds).stream()
+                .collect(Collectors.toMap(Member::getId, Function.identity()));
+
+        Slice<MemberFollowResponse> mapped = follows.map(follow -> {
+            Long targetMemberId = targetMemberIdExtractor.apply(follow);
+            Member member = memberMap.get(targetMemberId);
+            if (member == null) {
+                throw new MemberException(MemberErrorCode.MEMBER_NOT_FOUND);
+            }
+            return MemberFollowResponse.of(member, follow.getCreatedAt());
+        });
+
+        return SliceResponse.of(mapped);
     }
 }

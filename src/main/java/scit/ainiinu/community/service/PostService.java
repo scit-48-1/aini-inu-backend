@@ -10,7 +10,6 @@ import scit.ainiinu.common.response.SliceResponse;
 import scit.ainiinu.community.dto.CommentCreateRequest;
 import scit.ainiinu.community.dto.CommentResponse;
 import scit.ainiinu.community.dto.PostCreateRequest;
-import scit.ainiinu.community.dto.PostCreateResponse;
 import scit.ainiinu.community.dto.PostDetailResponse;
 import scit.ainiinu.community.dto.PostLikeResponse;
 import scit.ainiinu.community.dto.PostResponse;
@@ -92,14 +91,14 @@ public class PostService {
      * 게시글 생성
      */
     @Transactional
-    public PostCreateResponse create(Long authorId, PostCreateRequest request) {
+    public PostResponse create(Long authorId, PostCreateRequest request) {
         Post post = Post.create(
                 authorId,
                 request.getContent(),
                 request.getImageUrls()
         );
         Post saved = postRepository.save(post);
-        return PostCreateResponse.from(saved);
+        return PostResponse.from(saved, false);
     }
 
     /**

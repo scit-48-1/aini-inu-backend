@@ -18,7 +18,6 @@ import scit.ainiinu.common.security.resolver.CurrentMemberArgumentResolver;
 import scit.ainiinu.community.dto.CommentCreateRequest;
 import scit.ainiinu.community.dto.CommentResponse;
 import scit.ainiinu.community.dto.PostCreateRequest;
-import scit.ainiinu.community.dto.PostCreateResponse;
 import scit.ainiinu.community.dto.PostDetailResponse;
 import scit.ainiinu.community.dto.PostLikeResponse;
 import scit.ainiinu.community.dto.PostResponse;
@@ -74,7 +73,7 @@ class PostControllerTest {
         @DisplayName("유효한 요청으로 게시글을 생성하면 성공한다")
         void create_post_success() throws Exception {
             // given
-            PostCreateResponse dummy = new PostCreateResponse();
+            PostResponse dummy = new PostResponse();
             given(postService.create(anyLong(), any())).willReturn(dummy);
 
             String body = """
