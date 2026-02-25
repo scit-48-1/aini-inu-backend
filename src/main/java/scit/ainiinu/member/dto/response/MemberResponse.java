@@ -21,6 +21,7 @@ public class MemberResponse {
     private MemberType memberType;
     private String profileImageUrl;
     private String linkedNickname;
+    private String phone;
     private Integer age;
     private Gender gender;
     private String mbti;
@@ -36,6 +37,7 @@ public class MemberResponse {
     private boolean isVerified;
     
     private LocalDateTime createdAt;
+    private LocalDateTime nicknameChangedAt;
 
     public static MemberResponse from(Member member, List<MemberPersonalityTypeResponse> personalityTypes) {
         return MemberResponse.builder()
@@ -45,6 +47,7 @@ public class MemberResponse {
                 .memberType(member.getMemberType())
                 .profileImageUrl(member.getProfileImageUrl())
                 .linkedNickname(member.getLinkedNickname())
+                .phone(member.getPhone())
                 .age(member.getAge())
                 .gender(member.getGender())
                 .mbti(member.getMbti())
@@ -57,6 +60,7 @@ public class MemberResponse {
                 .status(member.getStatus())
                 .isVerified(member.isVerified())
                 .createdAt(member.getCreatedAt())
+                .nicknameChangedAt(member.getNicknameChangedAt())
                 .build();
     }
 }

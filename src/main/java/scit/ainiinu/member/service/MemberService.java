@@ -63,6 +63,7 @@ public class MemberService {
                 request.getNickname(),
                 request.getProfileImageUrl(),
                 request.getLinkedNickname(),
+                request.getPhone(),
                 request.getAge(),
                 request.getGender(),
                 request.getMbti(),
@@ -85,6 +86,19 @@ public class MemberService {
         return toMemberResponse(member);
     }
 
+    public SliceResponse<MemberResponse> searchMembers(Long memberId, String query, Pageable pageable) {
+        findMember(memberId);
+
+        String keyword = query == null ? "" : query.trim();
+        Slice<Member> members = memberRepository
+                .findByNicknameContainingIgnoreCaseOrLinkedNicknameContainingIgnoreCaseAndIdNot(
+                        keyword, keyword, memberId, pageable
+                );
+
+        Slice<MemberResponse> mapped = members.map(this::toMemberResponse);
+        return SliceResponse.of(mapped);
+    }
+
     @Transactional
     public MemberResponse updateMyProfile(Long memberId, MemberProfilePatchRequest request) {
         Member member = findMember(memberId);
@@ -99,6 +113,7 @@ public class MemberService {
                 request.getNickname(),
                 request.getProfileImageUrl(),
                 request.getLinkedNickname(),
+                request.getPhone(),
                 request.getAge(),
                 request.getGender(),
                 request.getMbti(),

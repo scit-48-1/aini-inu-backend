@@ -27,6 +27,9 @@ public class MemberCreateRequest {
     @Size(max = 30, message = "연동 닉네임은 30자 이내여야 합니다.")
     private String linkedNickname;
 
+    @Pattern(regexp = "^01[0-9]-?\\d{3,4}-?\\d{4}$", message = "전화번호 형식이 올바르지 않습니다.")
+    private String phone;
+
     @Min(value = 1, message = "나이는 1살 이상이어야 합니다.")
     @Max(value = 100, message = "나이는 100살 이하여야 합니다.")
     private Integer age;

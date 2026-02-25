@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import scit.ainiinu.common.response.ApiResponse;
 import scit.ainiinu.common.response.SliceResponse;
@@ -74,6 +75,15 @@ public class MemberController {
             @Valid @RequestBody MemberProfilePatchRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.success(memberService.updateMyProfile(memberId, request)));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<SliceResponse<MemberResponse>>> searchMembers(
+            @CurrentMember Long memberId,
+            @RequestParam("q") String query,
+            @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(memberService.searchMembers(memberId, query, pageable)));
     }
 
     @GetMapping("/{memberId}")

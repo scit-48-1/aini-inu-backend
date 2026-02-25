@@ -8,10 +8,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.core.MethodParameter;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import scit.ainiinu.common.security.interceptor.JwtAuthInterceptor;
+import scit.ainiinu.common.security.annotation.CurrentMember;
 import scit.ainiinu.common.security.resolver.CurrentMemberArgumentResolver;
 import scit.ainiinu.member.dto.request.MemberCreateRequest;
 import scit.ainiinu.member.dto.response.MemberResponse;
@@ -21,10 +23,12 @@ import scit.ainiinu.member.service.MemberService;
 import scit.ainiinu.pet.service.PetService;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -58,7 +62,10 @@ class MemberControllerTest {
     @BeforeEach
     void setUp() throws Exception {
         given(jwtAuthInterceptor.preHandle(any(), any(), any())).willReturn(true);
-        given(currentMemberArgumentResolver.supportsParameter(any())).willReturn(true);
+        given(currentMemberArgumentResolver.supportsParameter(any())).willAnswer(invocation -> {
+            MethodParameter parameter = invocation.getArgument(0);
+            return parameter.hasParameterAnnotation(CurrentMember.class);
+        });
         given(currentMemberArgumentResolver.resolveArgument(any(), any(), any(), any())).willReturn(1L);
     }
 
@@ -117,5 +124,25 @@ class MemberControllerTest {
             result.andDo(print())
                     .andExpect(status().isBadRequest());
         }
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("회원 검색 API를 호출하면 SliceResponse를 반환한다")
+    void searchMembers_returnsSliceResponse() throws Exception {
+        MemberResponse member = MemberResponse.builder()
+                .id(2L)
+                .nickname("이웃멍멍")
+                .personalityTypes(new ArrayList<>())
+                .build();
+
+        given(memberService.searchMembers(eq(1L), eq("이웃"), any()))
+                .willReturn(new scit.ainiinu.common.response.SliceResponse<>(List.of(member), 0, 20, true, true, false));
+
+        mockMvc.perform(get("/api/v1/members/search")
+                        .param("q", "이웃"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].nickname").value("이웃멍멍"));
     }
 }

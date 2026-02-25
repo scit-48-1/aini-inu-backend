@@ -20,6 +20,8 @@ import scit.ainiinu.member.entity.enums.MemberStatus;
 import scit.ainiinu.member.entity.enums.MemberType;
 import scit.ainiinu.member.entity.vo.MannerTemperature;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -49,6 +51,12 @@ public class Member extends BaseTimeEntity {
     @Column(name = "linked_nickname")
     private String linkedNickname;
 
+    @Column(length = 13)
+    private String phone;
+
+    @Column(name = "nickname_changed_at")
+    private LocalDateTime nicknameChangedAt;
+
     private Integer age;
 
     @Enumerated(EnumType.STRING)
@@ -71,12 +79,13 @@ public class Member extends BaseTimeEntity {
 
     @Builder
     public Member(String email, String nickname, String profileImageUrl, MemberType memberType,
-                  Integer age, Gender gender, String mbti, String personality, String selfIntroduction) {
+                  String phone, Integer age, Gender gender, String mbti, String personality, String selfIntroduction) {
         this.email = email;
         this.nickname = nickname;
         this.profileImageUrl = profileImageUrl;
         this.memberType = memberType != null ? memberType : MemberType.NON_PET_OWNER;
         this.status = MemberStatus.ACTIVE;
+        this.phone = phone;
         this.age = age;
         this.gender = gender;
         this.mbti = mbti;
@@ -97,16 +106,20 @@ public class Member extends BaseTimeEntity {
         this.mannerTemperature = MannerTemperature.fromAverage(this.mannerScoreSum, this.mannerScoreCount);
     }
 
-    public void updateProfile(String nickname, String profileImageUrl, String linkedNickname,
+    public void updateProfile(String nickname, String profileImageUrl, String linkedNickname, String phone,
                               Integer age, Gender gender, String mbti, String personality, String selfIntroduction) {
-        if (nickname != null && !nickname.isBlank()) {
+        if (nickname != null && !nickname.isBlank() && !nickname.equals(this.nickname)) {
             this.nickname = nickname;
+            this.nicknameChangedAt = LocalDateTime.now();
         }
         if (profileImageUrl != null) {
             this.profileImageUrl = profileImageUrl;
         }
         if (linkedNickname != null) {
             this.linkedNickname = linkedNickname;
+        }
+        if (phone != null) {
+            this.phone = phone;
         }
         if (age != null) {
             this.age = age;
