@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import scit.ainiinu.common.response.ApiResponse;
 import scit.ainiinu.common.response.SliceResponse;
+import scit.ainiinu.common.security.annotation.CurrentMember;
 import scit.ainiinu.community.dto.CommentCreateRequest;
 import scit.ainiinu.community.dto.CommentResponse;
 import scit.ainiinu.community.dto.PostCreateRequest;
@@ -28,10 +29,9 @@ public class PostController {
     // 게시글 목록 조회 (무한 스크롤)
     @GetMapping
     public ResponseEntity<ApiResponse<SliceResponse<PostResponse>>> getPosts(
+            @CurrentMember Long memberId,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        // TODO Security 적용 후: 로그인 사용자에서 memberId 추출
-        Long memberId = 1L; // 임시 사용자
         SliceResponse<PostResponse> response = postService.getPosts(memberId, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -39,22 +39,31 @@ public class PostController {
     // 게시글 상세 조회
     @GetMapping("/{postId}")
     public ResponseEntity<ApiResponse<PostDetailResponse>> getPost(
+            @CurrentMember Long memberId,
             @PathVariable("postId") Long postId
     ) {
-        // TODO Security 적용 후: 로그인 사용자에서 memberId 추출
-        Long memberId = 1L; // 임시 사용자
         PostDetailResponse response = postService.getPostDetail(memberId, postId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // 댓글 목록 조회
+    @GetMapping("/{postId}/comments")
+    public ResponseEntity<ApiResponse<SliceResponse<CommentResponse>>> getComments(
+            @CurrentMember Long memberId,
+            @PathVariable("postId") Long postId,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.ASC) Pageable pageable
+    ) {
+        SliceResponse<CommentResponse> response = postService.getComments(memberId, postId, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     // 게시글 수정
     @PatchMapping("/{postId}")
     public ResponseEntity<ApiResponse<PostResponse>> updatePost(
+            @CurrentMember Long authorId,
             @PathVariable("postId") Long postId,
             @RequestBody @Valid PostUpdateRequest request
     ) {
-        // TODO Security 적용 후: 로그인 사용자에서 authorId 추출
-        Long authorId = 1L; //임시 사용자
         PostResponse response = postService.updatePost(authorId, postId, request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -62,10 +71,9 @@ public class PostController {
     // 게시글 삭제
     @DeleteMapping("/{postId}")
     public ResponseEntity<ApiResponse<Void>> deletePost(
+            @CurrentMember Long authorId,
             @PathVariable("postId") Long postId
     ) {
-        // TODO Security 적용 후: 로그인 사용자에서 authorId 추출
-        Long authorId = 1L; // 임시 사용자
         postService.deletePost(authorId, postId);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
@@ -73,10 +81,9 @@ public class PostController {
     // 좋아요 토글
     @PostMapping("/{postId}/like")
     public ResponseEntity<ApiResponse<PostLikeResponse>> toggleLike(
+            @CurrentMember Long memberId,
             @PathVariable("postId") Long postId
     ) {
-        // TODO Security 적용 후: 로그인 사용자에서 authorId 추출
-        Long memberId = 1L; // 임시 사용자
         PostLikeResponse response = postService.toggleLike(memberId, postId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -84,11 +91,10 @@ public class PostController {
     // 댓글 작성
     @PostMapping("/{postId}/comments")
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(
+            @CurrentMember Long authorId,
             @PathVariable("postId") Long postId,
             @RequestBody @Valid CommentCreateRequest request
     ) {
-        // TODO Security 적용 후: 로그인 사용자에서 authorId 추출
-        Long authorId = 1L; // 임시 사용자
         CommentResponse response = postService.createComment(authorId, postId, request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -96,11 +102,10 @@ public class PostController {
     // 댓글 삭제
     @DeleteMapping("/{postId}/comments/{commentId}")
     public ResponseEntity<ApiResponse<Void>> deleteComment(
+            @CurrentMember Long authorId,
             @PathVariable("postId") Long postId,
             @PathVariable("commentId") Long commentId
     ) {
-        // TODO Security 적용 후: 로그인 사용자에서 authorId 추출
-        Long authorId = 1L; // 임시 사용자
         postService.deleteComment(authorId, postId, commentId);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
@@ -108,10 +113,9 @@ public class PostController {
     //게시글 생성
     @PostMapping
     public ResponseEntity<ApiResponse<PostResponse>> create(
+            @CurrentMember Long authorId,
             @RequestBody @Valid PostCreateRequest request
     ){
-        // TODO Security 적용 후: 로그인 사용자에서 authorId 추출
-        Long authorId = 1L; //임시 사용자
         PostResponse response = postService.create(authorId, request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }

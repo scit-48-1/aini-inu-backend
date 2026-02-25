@@ -13,6 +13,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import scit.ainiinu.common.exception.BusinessException;
 import scit.ainiinu.common.response.SliceResponse;
+import scit.ainiinu.common.security.annotation.CurrentMember;
 import scit.ainiinu.common.security.interceptor.JwtAuthInterceptor;
 import scit.ainiinu.common.security.resolver.CurrentMemberArgumentResolver;
 import scit.ainiinu.community.dto.CommentCreateRequest;
@@ -29,6 +30,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
@@ -63,6 +65,10 @@ class PostControllerTest {
     @BeforeEach
     void setUp() throws Exception {
         given(jwtAuthInterceptor.preHandle(any(), any(), any())).willReturn(true);
+        given(currentMemberArgumentResolver.supportsParameter(
+                argThat(parameter -> parameter.hasParameterAnnotation(CurrentMember.class))
+        )).willReturn(true);
+        given(currentMemberArgumentResolver.resolveArgument(any(), any(), any(), any())).willReturn(1L);
     }
 
     @Nested
@@ -358,6 +364,43 @@ class PostControllerTest {
                             .content(body))
                     .andDo(print())
                     .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    @DisplayName("댓글 목록 조회")
+    class GetComments {
+
+        @Test
+        @WithMockUser
+        @DisplayName("댓글 목록을 조회하면 SliceResponse를 반환한다")
+        void get_comments_success() throws Exception {
+            // given
+            Long postId = 1L;
+            CommentResponse comment = new CommentResponse();
+            comment.setId(10L);
+            comment.setContent("댓글");
+
+            SliceResponse<CommentResponse> sliceResponse = new SliceResponse<>(
+                    List.of(comment),
+                    0,
+                    20,
+                    true,
+                    true,
+                    false
+            );
+            given(postService.getComments(anyLong(), eq(postId), any())).willReturn(sliceResponse);
+
+            // when & then
+            mockMvc.perform(get("/api/v1/posts/{postId}/comments", postId)
+                            .param("page", "0")
+                            .param("size", "20")
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andDo(print())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.content[0].id").value(10))
+                    .andExpect(jsonPath("$.data.content[0].content").value("댓글"));
         }
     }
 

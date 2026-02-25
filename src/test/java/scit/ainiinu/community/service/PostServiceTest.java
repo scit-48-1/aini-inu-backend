@@ -137,16 +137,47 @@ class PostServiceTest {
         }
 
         @Test
-        @DisplayName("작성자가 아닌 사용자가 댓글을 삭제하려 하면 예외가 발생한다 (CO004)")
+        @DisplayName("게시글 작성자는 타인의 댓글도 삭제할 수 있다")
+        void success_PostOwnerCanDelete() {
+            // given
+            Long postId = 1L;
+            Long commentId = 10L;
+            Long postAuthorId = 1L;
+            Long commentAuthorId = 2L;
+
+            Post post = Post.create(postAuthorId, "Content", Collections.emptyList());
+            setId(post, postId);
+            post.increaseComment();
+
+            Comment comment = Comment.create(post, commentAuthorId, "Content");
+            setId(comment, commentId);
+
+            given(postRepository.findById(postId)).willReturn(Optional.of(post));
+            given(commentRepository.findById(commentId)).willReturn(Optional.of(comment));
+
+            // when
+            postService.deleteComment(postAuthorId, postId, commentId);
+
+            // then
+            assertThat(post.getCommentCount()).isEqualTo(0);
+            then(commentRepository).should(times(1)).delete(comment);
+        }
+
+        @Test
+        @DisplayName("댓글 작성자도 게시글 작성자도 아닌 사용자가 삭제하려 하면 예외가 발생한다 (CO004)")
         void fail_NotOwner() {
             // given
             Long postId = 1L;
             Long commentId = 10L;
-            Long authorId = 1L;
-            Long otherUserId = 2L;
+            Long postAuthorId = 1L;
+            Long commentAuthorId = 2L;
+            Long otherUserId = 3L;
 
-            Post post = Post.create(authorId, "Content", Collections.emptyList());
-            Comment comment = Comment.create(post, authorId, "Content");
+            Post post = Post.create(postAuthorId, "Content", Collections.emptyList());
+            setId(post, postId);
+
+            Comment comment = Comment.create(post, commentAuthorId, "Content");
+            setId(comment, commentId);
 
             given(postRepository.findById(postId)).willReturn(Optional.of(post));
             given(commentRepository.findById(commentId)).willReturn(Optional.of(comment));
@@ -155,6 +186,32 @@ class PostServiceTest {
             assertThatThrownBy(() -> postService.deleteComment(otherUserId, postId, commentId))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", CommunityErrorCode.NOT_COMMENT_OWNER);
+        }
+
+        @Test
+        @DisplayName("댓글이 대상 게시글에 속하지 않으면 예외가 발생한다 (CO003)")
+        void fail_CommentNotBelongToPost() {
+            // given
+            Long postId = 1L;
+            Long commentId = 10L;
+            Long authorId = 1L;
+
+            Post post = Post.create(authorId, "Content", Collections.emptyList());
+            setId(post, postId);
+
+            Post anotherPost = Post.create(2L, "Another", Collections.emptyList());
+            setId(anotherPost, 2L);
+
+            Comment comment = Comment.create(anotherPost, 2L, "Content");
+            setId(comment, commentId);
+
+            given(postRepository.findById(postId)).willReturn(Optional.of(post));
+            given(commentRepository.findById(commentId)).willReturn(Optional.of(comment));
+
+            // when & then
+            assertThatThrownBy(() -> postService.deleteComment(authorId, postId, commentId))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", CommunityErrorCode.COMMENT_NOT_FOUND);
         }
 
         @Test
@@ -250,6 +307,26 @@ class PostServiceTest {
         }
 
         @Test
+        @DisplayName("content가 비어있고 caption만 있어도 수정에 성공한다")
+        void success_with_caption_alias() {
+            // given
+            Long postId = 1L;
+            Long authorId = 1L;
+            Post post = Post.create(authorId, "Original Content", Collections.emptyList());
+            setId(post, postId);
+            given(postRepository.findById(postId)).willReturn(Optional.of(post));
+
+            PostUpdateRequest request = new PostUpdateRequest();
+            request.setCaption("Updated By Caption");
+
+            // when
+            PostResponse response = postService.updatePost(authorId, postId, request);
+
+            // then
+            assertThat(response.getContent()).isEqualTo("Updated By Caption");
+        }
+
+        @Test
         @DisplayName("작성자가 아닌 사용자가 수정하려 하면 예외가 발생한다 (CO002)")
         void fail_NotOwner() {
             // given
@@ -264,6 +341,41 @@ class PostServiceTest {
             assertThatThrownBy(() -> postService.updatePost(otherUserId, postId, request))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", CommunityErrorCode.NOT_POST_OWNER);
+        }
+    }
+
+    @Nested
+    @DisplayName("댓글 목록 조회")
+    class GetComments {
+
+        @Test
+        @DisplayName("게시글 댓글 목록을 SliceResponse로 반환한다")
+        void success() {
+            // given
+            Long memberId = 1L;
+            Long postId = 100L;
+            Pageable pageable = PageRequest.of(0, 20);
+
+            Post post = Post.create(1L, "Post Content", Collections.emptyList());
+            setId(post, postId);
+
+            Comment comment1 = Comment.create(post, 2L, "Comment 1");
+            setId(comment1, 1L);
+            Comment comment2 = Comment.create(post, 3L, "Comment 2");
+            setId(comment2, 2L);
+
+            Slice<Comment> commentSlice = new SliceImpl<>(List.of(comment1, comment2), pageable, false);
+
+            given(postRepository.findById(postId)).willReturn(Optional.of(post));
+            given(commentRepository.findByPostOrderByCreatedAtAsc(post, pageable)).willReturn(commentSlice);
+
+            // when
+            SliceResponse<CommentResponse> response = postService.getComments(memberId, postId, pageable);
+
+            // then
+            assertThat(response.getContent()).hasSize(2);
+            assertThat(response.getContent().get(0).getContent()).isEqualTo("Comment 1");
+            then(commentRepository).should(times(1)).findByPostOrderByCreatedAtAsc(post, pageable);
         }
     }
 

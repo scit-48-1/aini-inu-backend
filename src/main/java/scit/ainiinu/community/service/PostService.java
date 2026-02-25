@@ -88,13 +88,26 @@ public class PostService {
     }
 
     /**
+     * 댓글 목록 조회 (무한 스크롤)
+     */
+    public SliceResponse<CommentResponse> getComments(Long memberId, Long postId, Pageable pageable) {
+        // TODO: memberId 기반 차단/권한 정책 확장
+
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new BusinessException(CommunityErrorCode.POST_NOT_FOUND));
+
+        Slice<Comment> comments = commentRepository.findByPostOrderByCreatedAtAsc(post, pageable);
+        return SliceResponse.of(comments.map(CommentResponse::from));
+    }
+
+    /**
      * 게시글 생성
      */
     @Transactional
     public PostResponse create(Long authorId, PostCreateRequest request) {
         Post post = Post.create(
                 authorId,
-                request.getContent(),
+                request.getResolvedContent(),
                 request.getImageUrls()
         );
         Post saved = postRepository.save(post);
@@ -117,7 +130,7 @@ public class PostService {
         }
 
         // 3. 내용 및 이미지 수정 (길이 검증 등은 Entity 내부에서 처리)
-        post.update(request.getContent(), request.getImageUrls());
+        post.update(request.getResolvedContent(), request.getImageUrls());
 
         // 4. 좋아요 여부 조회 (수정한 사용자는 작성자이므로 authorId를 사용)
         boolean isLiked = postLikeRepository.existsByPostAndMemberId(post, authorId);
@@ -198,7 +211,7 @@ public class PostService {
 
     /**
      * 댓글 삭제
-     * - 댓글 작성자 본인만 삭제 가능합니다. (CO004)
+     * - 댓글 작성자 또는 게시글 작성자만 삭제 가능합니다. (CO004)
      * - 삭제 시 게시글의 댓글 수가 1 감소합니다.
      */
     @Transactional
@@ -211,12 +224,19 @@ public class PostService {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new BusinessException(CommunityErrorCode.COMMENT_NOT_FOUND));
 
-        // 3. 작성자 본인 확인 (아니면 CO004)
-        if (!comment.getAuthorId().equals(authorId)) {
+        // 3. 댓글-게시글 매칭 검증 (다른 게시글의 댓글 ID 오용 방지)
+        if (!comment.getPost().getId().equals(postId)) {
+            throw new BusinessException(CommunityErrorCode.COMMENT_NOT_FOUND);
+        }
+
+        // 4. 삭제 권한 확인: 댓글 작성자 또는 게시글 작성자
+        boolean isCommentOwner = comment.getAuthorId().equals(authorId);
+        boolean isPostOwner = post.getAuthorId().equals(authorId);
+        if (!isCommentOwner && !isPostOwner) {
             throw new BusinessException(CommunityErrorCode.NOT_COMMENT_OWNER);
         }
 
-        // 4. 댓글 삭제 및 카운트 감소
+        // 5. 댓글 삭제 및 카운트 감소
         commentRepository.delete(comment);
         post.decreaseComment();
     }

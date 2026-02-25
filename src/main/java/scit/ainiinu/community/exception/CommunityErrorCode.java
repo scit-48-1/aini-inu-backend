@@ -11,7 +11,7 @@ public enum CommunityErrorCode implements ErrorCode {
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "CO001", "게시물을 찾을 수 없습니다"),
     NOT_POST_OWNER(HttpStatus.FORBIDDEN, "CO002", "게시물 작성자가 아닙니다"),
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CO003", "댓글을 찾을 수 없습니다"),
-    NOT_COMMENT_OWNER(HttpStatus.FORBIDDEN, "CO004", "댓글 작성자가 아닙니다"),
+    NOT_COMMENT_OWNER(HttpStatus.FORBIDDEN, "CO004", "댓글 삭제 권한이 없습니다"),
     INVALID_CONTENT_LENGTH(HttpStatus.BAD_REQUEST, "CO005", "내용이 너무 깁니다"),
     
     // 기존 유지 (명세 외 추가 제약)
