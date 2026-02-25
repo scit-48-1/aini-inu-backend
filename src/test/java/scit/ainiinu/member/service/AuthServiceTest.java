@@ -9,12 +9,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import scit.ainiinu.common.security.jwt.JwtTokenProvider;
-import scit.ainiinu.member.dto.request.LoginRequest;
+import scit.ainiinu.member.dto.request.AuthLoginRequest;
 import scit.ainiinu.member.dto.request.TokenRefreshRequest;
 import scit.ainiinu.member.dto.response.LoginResponse;
 import scit.ainiinu.member.entity.Member;
 import scit.ainiinu.member.entity.RefreshToken;
-import scit.ainiinu.member.entity.enums.SocialProvider;
 import scit.ainiinu.member.repository.MemberRepository;
 import scit.ainiinu.member.repository.RefreshTokenRepository;
 
@@ -42,30 +41,29 @@ class AuthServiceTest {
     private JwtTokenProvider jwtTokenProvider;
 
     @Nested
-    @DisplayName("소셜 로그인")
+    @DisplayName("이메일 로그인")
     class Login {
 
         @Test
         @DisplayName("기존 회원이 로그인하면 isNewMember는 false를 반환한다")
         void login_withExistingMember_returnsIsNewMemberFalse() {
             // given
-            String email = "kakao_12345@example.com";
-            SocialProvider provider = SocialProvider.KAKAO;
-            LoginRequest request = new LoginRequest("social-access-token");
+            AuthLoginRequest request = new AuthLoginRequest();
+            request.setEmail("user@example.com");
+            request.setPassword("Abcd1234!");
 
             Member existingMember = Member.builder()
-                    .email(email)
+                    .email("user@example.com")
                     .nickname("기존유저")
-                    .socialProvider(provider)
                     .build();
             ReflectionTestUtils.setField(existingMember, "id", 1L);
 
-            given(memberRepository.findByEmail(any())).willReturn(Optional.of(existingMember));
+            given(memberRepository.findByEmail(request.getEmail())).willReturn(Optional.of(existingMember));
             given(jwtTokenProvider.generateAccessToken(any())).willReturn("access-token");
             given(jwtTokenProvider.generateRefreshToken(any())).willReturn("refresh-token");
 
             // when
-            LoginResponse response = authService.login(provider, request);
+            LoginResponse response = authService.loginWithEmail(request);
 
             // then
             assertThat(response.isNewMember()).isFalse();
@@ -73,34 +71,6 @@ class AuthServiceTest {
             assertThat(response.getMemberId()).isEqualTo(1L);
 
             then(refreshTokenRepository).should().deleteByMember(any());
-            then(refreshTokenRepository).should().save(any());
-        }
-
-        @Test
-        @DisplayName("신규 회원이 로그인하면 회원을 저장하고 isNewMember는 true를 반환한다")
-        void login_withNewMember_savesAndReturnsIsNewMemberTrue() {
-            // given
-            SocialProvider provider = SocialProvider.GOOGLE;
-            LoginRequest request = new LoginRequest("social-access-token");
-
-            given(memberRepository.findByEmail(any())).willReturn(Optional.empty());
-            given(memberRepository.save(any())).willAnswer(invocation -> {
-                Member member = invocation.getArgument(0);
-                ReflectionTestUtils.setField(member, "id", 2L);
-                return member;
-            });
-            given(jwtTokenProvider.generateAccessToken(any())).willReturn("access-token");
-            given(jwtTokenProvider.generateRefreshToken(any())).willReturn("refresh-token");
-
-            // when
-            LoginResponse response = authService.login(provider, request);
-
-            // then
-            assertThat(response.isNewMember()).isTrue();
-            assertThat(response.getAccessToken()).isEqualTo("access-token");
-            assertThat(response.getMemberId()).isEqualTo(2L);
-
-            then(memberRepository).should().save(any());
             then(refreshTokenRepository).should().save(any());
         }
     }

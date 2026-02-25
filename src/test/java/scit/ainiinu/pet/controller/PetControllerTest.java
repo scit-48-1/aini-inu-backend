@@ -12,6 +12,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import scit.ainiinu.common.exception.BusinessException;
+import scit.ainiinu.common.security.annotation.CurrentMember;
 import scit.ainiinu.common.security.interceptor.JwtAuthInterceptor;
 import scit.ainiinu.common.security.resolver.CurrentMemberArgumentResolver;
 import scit.ainiinu.pet.dto.request.PetCreateRequest;
@@ -25,10 +26,12 @@ import scit.ainiinu.pet.entity.enums.PetSize;
 import scit.ainiinu.pet.exception.PetErrorCode;
 import scit.ainiinu.pet.service.PetService;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
@@ -66,6 +69,10 @@ class PetControllerTest {
     @BeforeEach
     void setUp() throws Exception {
         given(jwtAuthInterceptor.preHandle(any(), any(), any())).willReturn(true);
+        given(currentMemberArgumentResolver.supportsParameter(
+                argThat(parameter -> parameter.hasParameterAnnotation(CurrentMember.class))
+        )).willReturn(true);
+        given(currentMemberArgumentResolver.resolveArgument(any(), any(), any(), any())).willReturn(1L);
     }
 
     @Nested
@@ -80,7 +87,7 @@ class PetControllerTest {
             PetCreateRequest request = new PetCreateRequest();
             request.setName("몽이");
             request.setBreedId(1L);
-            request.setAge(3);
+            request.setBirthDate(LocalDate.of(2021, 1, 1));
             request.setGender(PetGender.MALE);
             request.setSize(PetSize.SMALL);
             request.setIsNeutered(true);
@@ -119,7 +126,7 @@ class PetControllerTest {
             // given: 이름이 없는 잘못된 요청
             PetCreateRequest request = new PetCreateRequest();
             request.setBreedId(1L);
-            request.setAge(3);
+            request.setBirthDate(LocalDate.of(2021, 1, 1));
 
             // when & then
             mockMvc.perform(post("/api/v1/pets")
@@ -201,7 +208,7 @@ class PetControllerTest {
             Long petId = 1L;
             PetUpdateRequest request = PetUpdateRequest.builder()
                     .name("수정된이름")
-                    .age(5)
+                    .birthDate(LocalDate.of(2020, 1, 1))
                     .isNeutered(true)
                     .mbti("INTJ")
                     .build();
@@ -238,7 +245,6 @@ class PetControllerTest {
             Long petId = 999L;
             PetUpdateRequest request = PetUpdateRequest.builder()
                     .name("수정된이름")
-                    .age(5)
                     .build();
 
             given(petService.updatePet(any(), eq(petId), any(PetUpdateRequest.class)))
@@ -263,7 +269,6 @@ class PetControllerTest {
             Long petId = 1L;
             PetUpdateRequest request = PetUpdateRequest.builder()
                     .name("수정된이름")
-                    .age(5)
                     .build();
 
             given(petService.updatePet(any(), eq(petId), any(PetUpdateRequest.class)))

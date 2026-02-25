@@ -25,6 +25,7 @@ import scit.ainiinu.pet.repository.PersonalityRepository;
 import scit.ainiinu.pet.repository.PetRepository;
 import scit.ainiinu.pet.repository.WalkingStyleRepository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -253,7 +254,7 @@ class PetServiceTest {
             PetCreateRequest req = new PetCreateRequest();
             req.setName("Mong");
             req.setBreedId(1L);
-            req.setAge(3);
+            req.setBirthDate(LocalDate.of(2021, 1, 1));
             req.setGender(PetGender.MALE);
             req.setSize(PetSize.SMALL);
             req.setIsNeutered(true);
@@ -347,7 +348,7 @@ class PetServiceTest {
 
             // then
             assertThat(existingPet.getName()).isEqualTo(request.getName());
-            assertThat(existingPet.getAge()).isEqualTo(request.getAge());
+            assertThat(existingPet.getAge()).isEqualTo(request.resolveAge());
             assertThat(existingPet.getIsNeutered()).isEqualTo(request.getIsNeutered());
 
             then(existingPet).should().updateBasicInfo(any(), any(), any(), any(), any());
@@ -377,7 +378,7 @@ class PetServiceTest {
         private PetUpdateRequest updateRequest() {
             return PetUpdateRequest.builder()
                     .name("UpdatedName")
-                    .age(5)
+                    .birthDate(LocalDate.of(2019, 1, 1))
                     .isNeutered(true)
                     .mbti("INTJ")
                     .photoUrl("new_url")

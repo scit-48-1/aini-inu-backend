@@ -18,7 +18,6 @@ import scit.ainiinu.common.exception.CommonErrorCode;
 import scit.ainiinu.member.entity.enums.Gender;
 import scit.ainiinu.member.entity.enums.MemberStatus;
 import scit.ainiinu.member.entity.enums.MemberType;
-import scit.ainiinu.member.entity.enums.SocialProvider;
 import scit.ainiinu.member.entity.vo.MannerTemperature;
 
 @Entity
@@ -64,13 +63,6 @@ public class Member extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean isVerified;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "social_provider")
-    private SocialProvider socialProvider;
-
-    @Column(name = "social_id")
-    private String socialId;
-
     @Embedded
     private MannerTemperature mannerTemperature;
 
@@ -79,15 +71,12 @@ public class Member extends BaseTimeEntity {
 
     @Builder
     public Member(String email, String nickname, String profileImageUrl, MemberType memberType,
-                  SocialProvider socialProvider, String socialId,
                   Integer age, Gender gender, String mbti, String personality, String selfIntroduction) {
         this.email = email;
         this.nickname = nickname;
         this.profileImageUrl = profileImageUrl;
         this.memberType = memberType != null ? memberType : MemberType.NON_PET_OWNER;
         this.status = MemberStatus.ACTIVE;
-        this.socialProvider = socialProvider;
-        this.socialId = socialId;
         this.age = age;
         this.gender = gender;
         this.mbti = mbti;

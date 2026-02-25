@@ -9,6 +9,8 @@ import lombok.Setter;
 import scit.ainiinu.pet.entity.enums.PetGender;
 import scit.ainiinu.pet.entity.enums.PetSize;
 
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.List;
 
 @Getter
@@ -22,8 +24,8 @@ public class PetCreateRequest {
     @NotNull(message = "견종 ID는 필수입니다")
     private Long breedId;
 
-    @NotNull(message = "나이는 필수입니다")
-    private Integer age;
+    @NotNull(message = "생년월일은 필수입니다")
+    private LocalDate birthDate;
 
     @NotNull(message = "성별은 필수입니다")
     private PetGender gender;
@@ -46,4 +48,8 @@ public class PetCreateRequest {
 
     private List<String> walkingStyles; // List of Codes
     private List<Long> personalityIds; // List of IDs
+
+    public Integer resolveAge() {
+        return Math.max(0, Period.between(birthDate, LocalDate.now()).getYears());
+    }
 }

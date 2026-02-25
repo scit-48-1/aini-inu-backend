@@ -43,7 +43,7 @@ public class MemberController {
 
     /**
      * 회원가입 완료 (프로필 생성)
-     * 소셜 로그인 후 추가 정보를 입력받아 가입을 완료합니다.
+     * 가입 직후 추가 프로필 정보를 입력받아 가입을 완료합니다.
      */
     @PostMapping("/profile")
     public ResponseEntity<ApiResponse<MemberResponse>> createProfile(

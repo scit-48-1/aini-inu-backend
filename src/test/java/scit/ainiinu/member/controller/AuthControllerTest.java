@@ -13,7 +13,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import scit.ainiinu.common.security.interceptor.JwtAuthInterceptor;
 import scit.ainiinu.common.security.resolver.CurrentMemberArgumentResolver;
-import scit.ainiinu.member.dto.request.LoginRequest;
+import scit.ainiinu.member.dto.request.AuthLoginRequest;
 import scit.ainiinu.member.dto.request.TokenRefreshRequest;
 import scit.ainiinu.member.dto.response.LoginResponse;
 import scit.ainiinu.member.service.AuthService;
@@ -50,15 +50,17 @@ class AuthControllerTest {
     }
 
     @Nested
-    @DisplayName("소셜 로그인")
+    @DisplayName("이메일 로그인")
     class Login {
 
         @Test
         @WithMockUser
-        @DisplayName("유효한 소셜 토큰으로 로그인하면 JWT 토큰을 반환한다")
-        void login_withValidSocialToken_returnsJwtToken() throws Exception {
+        @DisplayName("유효한 계정 정보로 로그인하면 JWT 토큰을 반환한다")
+        void login_withValidCredentials_returnsJwtToken() throws Exception {
             // given
-            LoginRequest request = new LoginRequest("valid-social-token");
+            AuthLoginRequest request = new AuthLoginRequest();
+            request.setEmail("user@example.com");
+            request.setPassword("Abcd1234!");
             LoginResponse response = LoginResponse.builder()
                     .accessToken("access-token")
                     .refreshToken("refresh-token")
@@ -68,10 +70,10 @@ class AuthControllerTest {
                     .memberId(1L)
                     .build();
 
-            given(authService.login(any(), any())).willReturn(response);
+            given(authService.loginWithEmail(any())).willReturn(response);
 
             // when
-            var result = mockMvc.perform(post("/api/v1/auth/login/kakao")
+            var result = mockMvc.perform(post("/api/v1/auth/login")
                     .with(csrf())
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)));
@@ -86,13 +88,15 @@ class AuthControllerTest {
 
         @Test
         @WithMockUser
-        @DisplayName("소셜 액세스 토큰이 없으면 400 에러를 반환한다")
-        void login_withEmptyToken_returnsBadRequest() throws Exception {
+        @DisplayName("이메일 또는 비밀번호가 비어 있으면 400 에러를 반환한다")
+        void login_withEmptyCredentials_returnsBadRequest() throws Exception {
             // given
-            LoginRequest request = new LoginRequest("");
+            AuthLoginRequest request = new AuthLoginRequest();
+            request.setEmail("");
+            request.setPassword("");
 
             // when
-            var result = mockMvc.perform(post("/api/v1/auth/login/kakao")
+            var result = mockMvc.perform(post("/api/v1/auth/login")
                     .with(csrf())
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(request)));
