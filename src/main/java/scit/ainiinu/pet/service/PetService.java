@@ -48,6 +48,11 @@ public class PetService {
             throw new BusinessException(PetErrorCode.PET_LIMIT_EXCEEDED);
         }
 
+        Integer resolvedAge = request.resolveAge();
+        if (resolvedAge == null) {
+            throw new BusinessException(PetErrorCode.INVALID_PET_INFO);
+        }
+
         // 2. 견종 조회
         Breed breed = breedRepository.findById(request.getBreedId())
                 .orElseThrow(() -> new BusinessException(PetErrorCode.BREED_NOT_FOUND));
@@ -74,7 +79,7 @@ public class PetService {
                 .memberId(memberId)
                 .breed(breed)
                 .name(request.getName())
-                .age(request.getAge())
+                .age(resolvedAge)
                 .gender(request.getGender())
                 .size(request.getSize())
                 .mbti(request.getMbti())
@@ -130,7 +135,7 @@ public class PetService {
         // 3. 기본 정보 수정 (Dirty Checking)
         pet.updateBasicInfo(
                 request.getName(),
-                request.getAge(),
+                request.resolveAge(),
                 request.getIsNeutered(),
                 request.getMbti(),
                 request.getPhotoUrl()
@@ -147,11 +152,12 @@ public class PetService {
         }
 
         // 5. 산책 스타일 수정
-        if (request.getWalkingStyleCodes() != null) {
+        List<String> resolvedWalkingStyleCodes = request.resolveWalkingStyleCodes();
+        if (resolvedWalkingStyleCodes != null) {
             pet.clearWalkingStyles();
-            if (!request.getWalkingStyleCodes().isEmpty()) {
-                List<WalkingStyle> styles = walkingStyleRepository.findByCodeIn(request.getWalkingStyleCodes());
-                if (styles.size() != request.getWalkingStyleCodes().size()) {
+            if (!resolvedWalkingStyleCodes.isEmpty()) {
+                List<WalkingStyle> styles = walkingStyleRepository.findByCodeIn(resolvedWalkingStyleCodes);
+                if (styles.size() != resolvedWalkingStyleCodes.size()) {
                     throw new BusinessException(PetErrorCode.INVALID_PET_INFO);
                 }
                 styles.forEach(pet::addWalkingStyle);
