@@ -13,8 +13,6 @@ import scit.ainiinu.common.exception.BusinessException;
 import scit.ainiinu.member.entity.Member;
 import scit.ainiinu.member.entity.enums.MemberType;
 import scit.ainiinu.member.repository.MemberRepository;
-import scit.ainiinu.pet.entity.Pet;
-import scit.ainiinu.pet.repository.PetRepository;
 import scit.ainiinu.walk.dto.request.ThreadApplyRequest;
 import scit.ainiinu.walk.dto.request.ThreadCreateRequest;
 import scit.ainiinu.walk.dto.response.ThreadApplyResponse;
@@ -54,9 +52,6 @@ class WalkThreadServiceTest {
 
     @Mock
     private MemberRepository memberRepository;
-
-    @Mock
-    private PetRepository petRepository;
 
     @InjectMocks
     private WalkThreadService walkThreadService;
@@ -98,8 +93,7 @@ class WalkThreadServiceTest {
 
             ThreadCreateRequest request = createRequest();
             given(memberRepository.findById(1L)).willReturn(Optional.of(member));
-            given(walkThreadRepository.existsByAuthorIdAndStatus(1L, WalkThreadStatus.RECRUITING)).willReturn(false);
-            given(petRepository.findAllById(request.getPetIds())).willReturn(List.of(Pet.builder().build()));
+            given(walkThreadRepository.findAllByAuthorIdAndStatus(1L, WalkThreadStatus.RECRUITING)).willReturn(List.of());
             given(walkThreadRepository.save(any(WalkThread.class))).willAnswer(invocation -> {
                 WalkThread thread = invocation.getArgument(0);
                 ReflectionTestUtils.setField(thread, "id", 101L);

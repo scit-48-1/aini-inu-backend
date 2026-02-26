@@ -26,7 +26,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "animal.registry.api.key=test-key",
+        "spring.datasource.url=jdbc:h2:mem:walkthread-int;MODE=MySQL;NON_KEYWORDS=VALUE;DB_CLOSE_DELAY=-1"
+})
 @AutoConfigureMockMvc
 @Transactional
 class WalkThreadIntegrationTest {
@@ -49,7 +52,7 @@ class WalkThreadIntegrationTest {
         // given
         Member member = memberRepository.save(Member.builder()
                 .email("thread-owner@test.com")
-                .nickname("threadowner")
+                .nickname("throwner1")
                 .memberType(MemberType.PET_OWNER)
                 .build());
 

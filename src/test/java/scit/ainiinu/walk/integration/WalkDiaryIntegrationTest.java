@@ -28,7 +28,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "animal.registry.api.key=test-key",
+        "spring.datasource.url=jdbc:h2:mem:walkdiary-int;MODE=MySQL;NON_KEYWORDS=VALUE;DB_CLOSE_DELAY=-1"
+})
 @AutoConfigureMockMvc
 @Transactional
 class WalkDiaryIntegrationTest {

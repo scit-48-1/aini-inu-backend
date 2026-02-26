@@ -5,9 +5,11 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
+import scit.ainiinu.common.config.JpaConfig;
 import scit.ainiinu.member.entity.MemberFollow;
 import scit.ainiinu.member.repository.MemberFollowRepository;
 import scit.ainiinu.walk.entity.WalkDiary;
@@ -18,7 +20,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DataJpaTest
+@DataJpaTest(properties = "spring.datasource.url=jdbc:h2:mem:walkdiary;MODE=MySQL;NON_KEYWORDS=VALUE;DB_CLOSE_DELAY=-1")
+@Import(JpaConfig.class)
 class WalkDiaryRepositoryTest {
 
     @Autowired

@@ -24,6 +24,8 @@ import scit.ainiinu.common.security.resolver.CurrentMemberArgumentResolver;
 import scit.ainiinu.walk.dto.request.ThreadApplyRequest;
 import scit.ainiinu.walk.dto.request.ThreadCreateRequest;
 import scit.ainiinu.walk.dto.response.ThreadApplyResponse;
+import scit.ainiinu.walk.dto.response.ThreadHotspotResponse;
+import scit.ainiinu.walk.dto.response.ThreadMapResponse;
 import scit.ainiinu.walk.dto.response.ThreadSummaryResponse;
 import scit.ainiinu.walk.dto.response.ThreadResponse;
 import scit.ainiinu.walk.exception.ThreadErrorCode;
@@ -39,6 +41,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -229,6 +232,71 @@ class WalkThreadControllerTest {
                     .andDo(print())
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.errorCode").value("T409_CAPACITY_FULL"));
+        }
+    }
+
+    @Nested
+    @DisplayName("스레드 지도/취소/핫스팟 API")
+    class MapCancelHotspot {
+
+        @Test
+        @WithMockUser
+        @DisplayName("성공: 지도 목록 조회를 반환한다")
+        void map_success() throws Exception {
+            // given
+            ThreadMapResponse mapResponse = ThreadMapResponse.builder()
+                    .threadId(1L)
+                    .title("서울숲 모임")
+                    .chatType("GROUP")
+                    .currentParticipants(2)
+                    .maxParticipants(5)
+                    .placeName("서울숲")
+                    .build();
+            given(walkThreadService.getMapThreads(anyLong(), eq(37.54), eq(127.04), eq(5.0)))
+                    .willReturn(List.of(mapResponse));
+
+            // when & then
+            mockMvc.perform(get("/api/v1/threads/map")
+                            .param("latitude", "37.54")
+                            .param("longitude", "127.04")
+                            .param("radius", "5"))
+                    .andDo(print())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data[0].threadId").value(1L));
+        }
+
+        @Test
+        @WithMockUser
+        @DisplayName("성공: 신청 취소를 수행한다")
+        void cancelApply_success() throws Exception {
+            // given
+            Long threadId = 1L;
+
+            // when & then
+            mockMvc.perform(delete("/api/v1/threads/{threadId}/apply", threadId)
+                            .with(csrf()))
+                    .andDo(print())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data").value(org.hamcrest.Matchers.nullValue()));
+        }
+
+        @Test
+        @WithMockUser
+        @DisplayName("성공: 핫스팟 목록을 조회한다")
+        void hotspot_success() throws Exception {
+            // given
+            given(walkThreadService.getHotspots(24))
+                    .willReturn(List.of(new ThreadHotspotResponse("서울숲", 3L)));
+
+            // when & then
+            mockMvc.perform(get("/api/v1/threads/hotspot")
+                            .param("hours", "24"))
+                    .andDo(print())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[0].region").value("서울숲"))
+                    .andExpect(jsonPath("$.data[0].count").value(3));
         }
     }
 
