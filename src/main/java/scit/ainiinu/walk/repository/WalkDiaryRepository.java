@@ -24,7 +24,7 @@ public interface WalkDiaryRepository extends JpaRepository<WalkDiary, Long> {
             where mf.followerId = :memberId
               and d.isPublic = true
               and d.deletedAt is null
-            order by d.createdAt desc
+            order by d.createdAt desc, d.id desc
             """)
     Slice<WalkDiary> findFollowingPublicSlice(@Param("memberId") Long memberId, Pageable pageable);
 }
