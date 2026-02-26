@@ -1,6 +1,7 @@
 package scit.ainiinu.lostpet.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import scit.ainiinu.lostpet.domain.LostPetMatch;
@@ -20,6 +21,7 @@ import scit.ainiinu.lostpet.repository.SightingRepository;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class LostPetMatchApprovalService {
 
     private final LostPetReportRepository lostPetReportRepository;
@@ -29,6 +31,7 @@ public class LostPetMatchApprovalService {
 
     @Transactional
     public LostPetMatchResponse approve(Long lostPetId, Long memberId, LostPetMatchApproveRequest request) {
+        long startedAt = System.currentTimeMillis();
         LostPetReport report = lostPetReportRepository.findById(lostPetId)
                 .orElseThrow(() -> new LostPetException(LostPetErrorCode.L404_NOT_FOUND));
         if (!report.getOwnerId().equals(memberId)) {
@@ -63,11 +66,34 @@ public class LostPetMatchApprovalService {
             Long chatRoomId = chatRoomDirectClient.createDirectRoom(sighting.getFinderId());
             if (chatRoomId == null) {
                 match.markPendingChatLink();
+                log.warn(
+                        "lostpet.match.approve pending-chat-link lostPetId={} sightingId={} memberId={} elapsedMs={}",
+                        lostPetId,
+                        sightingId,
+                        memberId,
+                        System.currentTimeMillis() - startedAt
+                );
             } else {
                 match.linkChatRoom(chatRoomId);
+                log.info(
+                        "lostpet.match.approve chat-linked lostPetId={} sightingId={} memberId={} chatRoomId={} elapsedMs={}",
+                        lostPetId,
+                        sightingId,
+                        memberId,
+                        chatRoomId,
+                        System.currentTimeMillis() - startedAt
+                );
             }
         } catch (Exception exception) {
             match.markPendingChatLink();
+            log.warn(
+                    "lostpet.match.approve chat-create-failed lostPetId={} sightingId={} memberId={} elapsedMs={} reason={}",
+                    lostPetId,
+                    sightingId,
+                    memberId,
+                    System.currentTimeMillis() - startedAt,
+                    exception.getClass().getSimpleName()
+            );
         }
 
         LostPetMatch saved = lostPetMatchRepository.save(match);
