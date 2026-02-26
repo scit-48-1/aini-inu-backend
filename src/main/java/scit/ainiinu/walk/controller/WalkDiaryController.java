@@ -71,7 +71,7 @@ public class WalkDiaryController {
     public ResponseEntity<ApiResponse<WalkDiaryResponse>> updateDiary(
             @CurrentMember Long memberId,
             @PathVariable Long diaryId,
-            @RequestBody WalkDiaryPatchRequest request
+            @Valid @RequestBody WalkDiaryPatchRequest request
     ) {
         WalkDiaryResponse response = walkDiaryService.updateDiary(memberId, diaryId, request);
         return ResponseEntity.ok(ApiResponse.success(response));

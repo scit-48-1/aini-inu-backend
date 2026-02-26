@@ -30,7 +30,7 @@ public class WalkDiaryService {
 
     @Transactional
     public WalkDiaryResponse createDiary(Long memberId, WalkDiaryCreateRequest request) {
-        Boolean resolvedVisibility = request.getIsPublic() != null ? request.getIsPublic() : true;
+        validateThreadId(request.getThreadId());
 
         WalkDiary walkDiary = WalkDiary.create(
                 memberId,
@@ -39,7 +39,7 @@ public class WalkDiaryService {
                 request.getContent(),
                 request.getPhotoUrls(),
                 request.getWalkDate(),
-                resolvedVisibility
+                request.resolveIsPublic()
         );
 
         WalkDiary savedDiary = walkDiaryRepository.save(walkDiary);
@@ -79,6 +79,8 @@ public class WalkDiaryService {
         if (!walkDiary.isOwner(memberId)) {
             throw new BusinessException(WalkDiaryErrorCode.DIARY_OWNER_ONLY);
         }
+
+        validateThreadId(request.getThreadId());
 
         walkDiary.update(
                 request.getThreadId(),
@@ -130,5 +132,14 @@ public class WalkDiaryService {
         }
 
         return "ACTIVE";
+    }
+
+    private void validateThreadId(Long threadId) {
+        if (threadId == null) {
+            return;
+        }
+
+        walkThreadRepository.findByIdAndStatusNot(threadId, WalkThreadStatus.DELETED)
+                .orElseThrow(() -> new BusinessException(WalkDiaryErrorCode.THREAD_NOT_FOUND));
     }
 }

@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
@@ -41,7 +42,7 @@ public class WalkDiary extends BaseTimeEntity {
     @Column(name = "thread_id")
     private Long threadId;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 120)
     private String title;
 
     @Column(nullable = false, length = 2000)
@@ -49,7 +50,8 @@ public class WalkDiary extends BaseTimeEntity {
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "walk_diary_photo_url", joinColumns = @JoinColumn(name = "walk_diary_id"))
-    @Column(name = "photo_url")
+    @OrderColumn(name = "display_order")
+    @Column(name = "photo_url", nullable = false, length = 1000)
     private List<String> photoUrls = new ArrayList<>();
 
     @Column(name = "walk_date", nullable = false)

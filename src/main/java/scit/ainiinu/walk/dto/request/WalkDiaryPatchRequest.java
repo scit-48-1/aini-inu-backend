@@ -15,12 +15,13 @@ public class WalkDiaryPatchRequest {
 
     private Long threadId;
 
-    @Size(max = 100)
+    @Size(max = 120)
     private String title;
 
     @Size(max = 2000)
     private String content;
 
+    @Size(max = 5)
     private List<String> photoUrls;
 
     private LocalDate walkDate;
