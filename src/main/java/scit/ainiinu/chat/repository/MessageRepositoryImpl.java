@@ -15,7 +15,7 @@ public class MessageRepositoryImpl implements MessageRepositoryCustom {
     private final EntityManager entityManager;
 
     @Override
-    public List<Message> findByRoomIdWithCursor(Long chatRoomId, Long cursor, int size) {
+    public List<Message> findByRoomIdWithCursor(Long chatRoomId, Long cursor, int size, String direction) {
         String jpql = """
                 select m
                 from Message m
@@ -23,6 +23,11 @@ public class MessageRepositoryImpl implements MessageRepositoryCustom {
                   and (:cursor is null or m.id < :cursor)
                 order by m.id desc
                 """;
+
+        // currently only backward cursor pagination is supported by contract.
+        if (!"before".equals(direction)) {
+            throw new IllegalArgumentException("Unsupported direction: " + direction);
+        }
 
         TypedQuery<Message> query = entityManager.createQuery(jpql, Message.class)
                 .setParameter("chatRoomId", chatRoomId)

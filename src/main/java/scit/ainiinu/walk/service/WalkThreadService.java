@@ -4,9 +4,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import scit.ainiinu.chat.entity.ChatParticipant;
+import scit.ainiinu.chat.entity.ChatRoom;
+import scit.ainiinu.chat.entity.ChatRoomStatus;
+import scit.ainiinu.chat.entity.ChatRoomType;
+import scit.ainiinu.chat.repository.ChatParticipantRepository;
+import scit.ainiinu.chat.repository.ChatRoomRepository;
 import scit.ainiinu.common.exception.BusinessException;
 import scit.ainiinu.common.response.SliceResponse;
 import scit.ainiinu.member.entity.Member;
@@ -53,6 +58,8 @@ public class WalkThreadService {
     private final WalkThreadFilterRepository walkThreadFilterRepository;
     private final WalkThreadApplicationRepository walkThreadApplicationRepository;
     private final MemberRepository memberRepository;
+    private final ChatRoomRepository chatRoomRepository;
+    private final ChatParticipantRepository chatParticipantRepository;
 
     @Transactional
     public ThreadResponse createThread(Long memberId, ThreadCreateRequest request) {
@@ -226,7 +233,7 @@ public class WalkThreadService {
             throw new BusinessException(ThreadErrorCode.CAPACITY_FULL);
         }
 
-        Long chatRoomId = generateChatRoomId(threadId, memberId);
+        Long chatRoomId = resolveChatRoomId(thread, memberId);
         if (existing.isPresent()) {
             existing.get().rejoin(chatRoomId);
         } else {
@@ -396,9 +403,49 @@ public class WalkThreadService {
         }
     }
 
-    private Long generateChatRoomId(Long threadId, Long memberId) {
-        long generated = Math.abs((threadId * 1_000_003L) ^ (memberId * 97L));
-        return generated + 1_000L;
+    private Long resolveChatRoomId(WalkThread thread, Long applicantId) {
+        Long threadId = thread.getId();
+        Long authorId = thread.getAuthorId();
+
+        ChatRoom room = switch (thread.getChatType()) {
+            case GROUP -> chatRoomRepository
+                    .findFirstByThreadIdAndChatTypeAndStatusOrderByIdAsc(
+                            threadId,
+                            ChatRoomType.GROUP,
+                            ChatRoomStatus.ACTIVE
+                    )
+                    .orElseGet(() -> chatRoomRepository.save(
+                            ChatRoom.create(threadId, ChatRoomType.GROUP, ChatRoomStatus.ACTIVE)
+                    ));
+            case INDIVIDUAL -> chatRoomRepository
+                    .findByThreadIdAndTypeAndParticipants(
+                            threadId,
+                            ChatRoomType.DIRECT,
+                            ChatRoomStatus.ACTIVE,
+                            authorId,
+                            applicantId
+                    )
+                    .orElseGet(() -> chatRoomRepository.save(
+                            ChatRoom.create(threadId, ChatRoomType.DIRECT, ChatRoomStatus.ACTIVE)
+                    ));
+        };
+
+        ensureParticipantJoined(room.getId(), authorId);
+        ensureParticipantJoined(room.getId(), applicantId);
+
+        return room.getId();
+    }
+
+    private void ensureParticipantJoined(Long chatRoomId, Long memberId) {
+        Optional<ChatParticipant> participantOptional = chatParticipantRepository.findByChatRoomIdAndMemberId(chatRoomId, memberId);
+        if (participantOptional.isPresent()) {
+            ChatParticipant participant = participantOptional.get();
+            if (participant.isLeft()) {
+                participant.rejoin();
+            }
+            return;
+        }
+        chatParticipantRepository.save(ChatParticipant.create(chatRoomId, memberId));
     }
 
     private BigDecimal toDecimal(Double value, int scale) {

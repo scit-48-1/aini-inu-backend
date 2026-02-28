@@ -46,6 +46,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willDoNothing;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -97,6 +99,7 @@ class ChatControllerSliceTest {
         @WithMockUser
         @DisplayName("성공: direct 채팅방 생성/재사용 응답을 반환한다")
         void createDirect_success() throws Exception {
+
             // given
             ChatRoomDirectCreateRequest request = new ChatRoomDirectCreateRequest();
             request.setPartnerId(2L);
@@ -142,7 +145,7 @@ class ChatControllerSliceTest {
                     .build();
             CursorResponse<ChatMessageResponse> cursorResponse = new CursorResponse<>(List.of(message), "300", true);
 
-            given(messageService.getMessages(anyLong(), anyLong(), any(), any())).willReturn(cursorResponse);
+            given(messageService.getMessages(anyLong(), anyLong(), any(), any(), any())).willReturn(cursorResponse);
 
             // when & then
             mockMvc.perform(get("/api/v1/chat-rooms/{chatRoomId}/messages", 100L)
@@ -186,6 +189,37 @@ class ChatControllerSliceTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.myState").value("CONFIRMED"))
                     .andExpect(jsonPath("$.data.confirmedMemberIds[1]").value(2L));
+        }
+
+        @Test
+        @WithMockUser
+        @DisplayName("성공: 산책확인 상태 조회 응답을 반환한다")
+        void getWalkConfirm_success() throws Exception {
+            WalkConfirmResponse response = WalkConfirmResponse.builder()
+                    .roomId(100L)
+                    .memberId(1L)
+                    .myState("CONFIRMED")
+                    .allConfirmed(false)
+                    .confirmedMemberIds(List.of(1L))
+                    .build();
+
+            given(walkConfirmService.getWalkConfirm(anyLong(), anyLong()))
+                    .willReturn(response);
+
+            mockMvc.perform(get("/api/v1/chat-rooms/{chatRoomId}/walk-confirm", 100L))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.myState").value("CONFIRMED"));
+        }
+
+        @Test
+        @WithMockUser
+        @DisplayName("성공: 산책확인 취소는 null data를 반환한다")
+        void deleteWalkConfirm_success() throws Exception {
+            willDoNothing().given(walkConfirmService).cancelWalkConfirm(anyLong(), anyLong());
+
+            mockMvc.perform(delete("/api/v1/chat-rooms/{chatRoomId}/walk-confirm", 100L).with(csrf()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true));
         }
     }
 

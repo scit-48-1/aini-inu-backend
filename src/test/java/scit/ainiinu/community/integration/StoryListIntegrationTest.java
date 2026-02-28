@@ -6,8 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import scit.ainiinu.common.security.jwt.JwtTokenProvider;
@@ -18,6 +16,7 @@ import scit.ainiinu.member.entity.MemberFollow;
 import scit.ainiinu.member.entity.enums.MemberType;
 import scit.ainiinu.member.repository.MemberFollowRepository;
 import scit.ainiinu.member.repository.MemberRepository;
+import scit.ainiinu.testsupport.IntegrationTestProfile;
 
 import java.time.LocalDateTime;
 
@@ -28,14 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-@ActiveProfiles("test")
-@TestPropertySource(properties = {
-        "spring.sql.init.mode=never",
-        "lostpet.ai.base-url=http://localhost:18080",
-        "lostpet.ai.analyze-path=/api/v1/analyze",
-        "lostpet.chat.base-url=http://localhost:18081",
-        "lostpet.chat.direct-create-path=/api/v1/chat/rooms/direct"
-})
+@IntegrationTestProfile
 class StoryListIntegrationTest {
 
     @Autowired

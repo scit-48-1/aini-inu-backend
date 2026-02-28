@@ -57,7 +57,7 @@ class ChatRepositorySliceTest {
         messageRepository.flush();
 
         // when
-        List<Message> messages = messageRepository.findByRoomIdWithCursor(room.getId(), m3.getId(), 10);
+        List<Message> messages = messageRepository.findByRoomIdWithCursor(room.getId(), m3.getId(), 10, "before");
 
         // then
         assertThat(messages).hasSize(2);

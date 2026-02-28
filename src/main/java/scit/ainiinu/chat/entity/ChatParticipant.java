@@ -66,6 +66,12 @@ public class ChatParticipant extends BaseTimeEntity {
         this.leftAt = LocalDateTime.now();
     }
 
+    public void rejoin() {
+        this.leftAt = null;
+        this.joinedAt = LocalDateTime.now();
+        this.walkConfirmState = ChatWalkConfirmState.UNCONFIRMED;
+    }
+
     public void confirmWalk() {
         this.walkConfirmState = ChatWalkConfirmState.CONFIRMED;
     }

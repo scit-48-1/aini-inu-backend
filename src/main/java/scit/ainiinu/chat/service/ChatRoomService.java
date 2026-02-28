@@ -50,8 +50,9 @@ public class ChatRoomService {
     private final MemberRepository memberRepository;
     private final PetRepository petRepository;
 
-    public SliceResponse<ChatRoomSummaryResponse> getRooms(Long memberId, Pageable pageable) {
-        Slice<ChatRoom> rooms = chatRoomRepository.findAccessibleRoomsByMemberId(memberId, pageable);
+    public SliceResponse<ChatRoomSummaryResponse> getRooms(Long memberId, String status, Pageable pageable) {
+        ChatRoomStatus parsedStatus = parseStatus(status);
+        Slice<ChatRoom> rooms = chatRoomRepository.findAccessibleRoomsByMemberId(memberId, parsedStatus, pageable);
         Slice<ChatRoomSummaryResponse> mapped = rooms.map(this::toSummaryResponse);
         return SliceResponse.of(mapped);
     }
@@ -216,5 +217,16 @@ public class ChatRoomService {
                 .clientMessageId(message.getClientMessageId())
                 .sentAt(message.getSentAt())
                 .build();
+    }
+
+    private ChatRoomStatus parseStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        try {
+            return ChatRoomStatus.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new ChatException(ChatErrorCode.INVALID_REQUEST);
+        }
     }
 }

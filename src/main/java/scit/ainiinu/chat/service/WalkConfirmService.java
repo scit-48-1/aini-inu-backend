@@ -23,26 +23,64 @@ public class WalkConfirmService {
     private final ChatParticipantRepository chatParticipantRepository;
 
     @Transactional
-    public WalkConfirmResponse updateWalkConfirm(Long memberId, Long chatRoomId, WalkConfirmRequest request) {
+    public WalkConfirmResponse confirmWalk(Long memberId, Long chatRoomId) {
         chatRoomRepository.findByIdForUpdate(chatRoomId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.ROOM_NOT_FOUND));
 
         ChatParticipant me = chatParticipantRepository.findByChatRoomIdAndMemberIdAndLeftAtIsNull(chatRoomId, memberId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.ROOM_ACCESS_DENIED));
 
-        String action = request.getAction() == null ? "" : request.getAction().trim().toUpperCase();
-        switch (action) {
-            case "CONFIRM" -> me.confirmWalk();
-            case "CANCEL" -> me.cancelWalkConfirm();
-            default -> throw new ChatException(ChatErrorCode.INVALID_WALK_CONFIRM_ACTION);
-        }
+        me.confirmWalk();
+        return buildResponse(chatRoomId, memberId, me, true);
+    }
 
+    @Transactional
+    public void cancelWalkConfirm(Long memberId, Long chatRoomId) {
+        chatRoomRepository.findByIdForUpdate(chatRoomId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.ROOM_NOT_FOUND));
+
+        ChatParticipant me = chatParticipantRepository.findByChatRoomIdAndMemberIdAndLeftAtIsNull(chatRoomId, memberId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.ROOM_ACCESS_DENIED));
+
+        me.cancelWalkConfirm();
+        buildResponse(chatRoomId, memberId, me, true);
+    }
+
+    public WalkConfirmResponse getWalkConfirm(Long memberId, Long chatRoomId) {
+        chatRoomRepository.findById(chatRoomId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.ROOM_NOT_FOUND));
+
+        ChatParticipant me = chatParticipantRepository.findByChatRoomIdAndMemberIdAndLeftAtIsNull(chatRoomId, memberId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.ROOM_ACCESS_DENIED));
+
+        return buildResponse(chatRoomId, memberId, me, false);
+    }
+
+    @Transactional
+    public WalkConfirmResponse updateWalkConfirm(Long memberId, Long chatRoomId, WalkConfirmRequest request) {
+        if (request == null || request.getAction() == null || request.getAction().isBlank()) {
+            return confirmWalk(memberId, chatRoomId);
+        }
+        String action = request.getAction().trim().toUpperCase();
+        return switch (action) {
+            case "CONFIRM" -> confirmWalk(memberId, chatRoomId);
+            case "CANCEL" -> {
+                cancelWalkConfirm(memberId, chatRoomId);
+                yield getWalkConfirm(memberId, chatRoomId);
+            }
+            default -> throw new ChatException(ChatErrorCode.INVALID_WALK_CONFIRM_ACTION);
+        };
+    }
+
+    private WalkConfirmResponse buildResponse(Long chatRoomId, Long memberId, ChatParticipant me, boolean syncRoomState) {
         List<ChatParticipant> activeParticipants = chatParticipantRepository.findAllByChatRoomIdAndLeftAtIsNull(chatRoomId);
         boolean allConfirmed = !activeParticipants.isEmpty()
                 && activeParticipants.stream().allMatch(p -> p.getWalkConfirmState() == ChatWalkConfirmState.CONFIRMED);
 
-        chatRoomRepository.findById(chatRoomId)
-                .ifPresent(room -> room.updateWalkConfirmed(allConfirmed));
+        if (syncRoomState) {
+            chatRoomRepository.findById(chatRoomId)
+                    .ifPresent(room -> room.updateWalkConfirmed(allConfirmed));
+        }
 
         List<Long> confirmedMemberIds = activeParticipants.stream()
                 .filter(participant -> participant.getWalkConfirmState() == ChatWalkConfirmState.CONFIRMED)

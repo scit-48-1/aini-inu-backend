@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,9 +48,10 @@ public class ChatController {
     @GetMapping
     public ResponseEntity<ApiResponse<SliceResponse<ChatRoomSummaryResponse>>> getChatRooms(
             @CurrentMember Long memberId,
+            @RequestParam(required = false) String status,
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        SliceResponse<ChatRoomSummaryResponse> response = chatRoomService.getRooms(memberId, pageable);
+        SliceResponse<ChatRoomSummaryResponse> response = chatRoomService.getRooms(memberId, status, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -76,9 +78,10 @@ public class ChatController {
             @CurrentMember Long memberId,
             @PathVariable Long chatRoomId,
             @RequestParam(required = false) String cursor,
-            @RequestParam(required = false) Integer size
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false, defaultValue = "before") String direction
     ) {
-        CursorResponse<ChatMessageResponse> response = messageService.getMessages(memberId, chatRoomId, cursor, size);
+        CursorResponse<ChatMessageResponse> response = messageService.getMessages(memberId, chatRoomId, cursor, size, direction);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -115,10 +118,33 @@ public class ChatController {
     public ResponseEntity<ApiResponse<WalkConfirmResponse>> walkConfirm(
             @CurrentMember Long memberId,
             @PathVariable Long chatRoomId,
-            @Valid @RequestBody WalkConfirmRequest request
+            @RequestBody(required = false) WalkConfirmRequest request
     ) {
-        WalkConfirmResponse response = walkConfirmService.updateWalkConfirm(memberId, chatRoomId, request);
+        WalkConfirmResponse response;
+        if (request == null || request.getAction() == null || request.getAction().isBlank()) {
+            response = walkConfirmService.confirmWalk(memberId, chatRoomId);
+        } else {
+            response = walkConfirmService.updateWalkConfirm(memberId, chatRoomId, request);
+        }
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{chatRoomId}/walk-confirm")
+    public ResponseEntity<ApiResponse<WalkConfirmResponse>> getWalkConfirm(
+            @CurrentMember Long memberId,
+            @PathVariable Long chatRoomId
+    ) {
+        WalkConfirmResponse response = walkConfirmService.getWalkConfirm(memberId, chatRoomId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @DeleteMapping("/{chatRoomId}/walk-confirm")
+    public ResponseEntity<ApiResponse<Void>> cancelWalkConfirm(
+            @CurrentMember Long memberId,
+            @PathVariable Long chatRoomId
+    ) {
+        walkConfirmService.cancelWalkConfirm(memberId, chatRoomId);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @GetMapping("/{chatRoomId}/reviews/me")

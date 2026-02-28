@@ -124,16 +124,8 @@ class ChatServiceUnitTest {
         @DisplayName("지원하지 않는 action이면 예외를 던진다")
         void invalidAction_throwsException() {
             // given
-            ChatRoom room = ChatRoom.create(null, ChatRoomType.GROUP, ChatRoomStatus.ACTIVE);
-            setRoomId(room, 100L);
-            ChatParticipant me = ChatParticipant.create(100L, 1L);
-            setParticipantId(me, 1L);
-
             WalkConfirmRequest request = new WalkConfirmRequest();
             request.setAction("BAD_ACTION");
-
-            given(chatRoomRepository.findByIdForUpdate(100L)).willReturn(Optional.of(room));
-            given(chatParticipantRepository.findByChatRoomIdAndMemberIdAndLeftAtIsNull(100L, 1L)).willReturn(Optional.of(me));
 
             // when & then
             assertThatThrownBy(() -> walkConfirmService.updateWalkConfirm(1L, 100L, request))

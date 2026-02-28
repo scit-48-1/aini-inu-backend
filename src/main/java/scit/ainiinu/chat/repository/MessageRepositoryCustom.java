@@ -6,5 +6,5 @@ import java.util.List;
 
 public interface MessageRepositoryCustom {
 
-    List<Message> findByRoomIdWithCursor(Long chatRoomId, Long cursor, int size);
+    List<Message> findByRoomIdWithCursor(Long chatRoomId, Long cursor, int size, String direction);
 }

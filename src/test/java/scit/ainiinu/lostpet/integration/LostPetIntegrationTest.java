@@ -26,10 +26,12 @@ import scit.ainiinu.common.security.jwt.JwtTokenProvider;
 import scit.ainiinu.lostpet.integration.ai.LostPetAiClient;
 import scit.ainiinu.lostpet.integration.ai.LostPetAiResult;
 import scit.ainiinu.lostpet.integration.chat.ChatRoomDirectClient;
+import scit.ainiinu.testsupport.IntegrationTestProfile;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@IntegrationTestProfile
 class LostPetIntegrationTest {
 
     @Autowired

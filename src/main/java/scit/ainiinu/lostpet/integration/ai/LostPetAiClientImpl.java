@@ -29,10 +29,11 @@ public class LostPetAiClientImpl implements LostPetAiClient {
     @Override
     public LostPetAiResult analyze(LostPetAnalyzeRequest request) {
         String endpoint = baseUrl + analyzePath;
+        LostPetAnalyzeRequest normalizedRequest = request.normalizeForAi();
         ResponseEntity<LostPetAiResult> response = restTemplate.exchange(
                 endpoint,
                 HttpMethod.POST,
-                new HttpEntity<>(request),
+                new HttpEntity<>(normalizedRequest),
                 new ParameterizedTypeReference<>() {
                 }
         );

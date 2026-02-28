@@ -25,7 +25,7 @@ public class LostPetAnalyzeService {
         try {
             LostPetAiResult result = lostPetAiClient.analyze(request);
             if (result == null) {
-                log.warn("lostpet.analyze result-null mode={} elapsedMs={}", request.getMode(), System.currentTimeMillis() - startedAt);
+                log.warn("lostpet.analyze result-null mode={} elapsedMs={}", request.resolveMode(), System.currentTimeMillis() - startedAt);
                 return fallbackResponse();
             }
             List<LostPetAiCandidate> aiCandidates = result.candidates() == null ? List.of() : result.candidates();
@@ -34,7 +34,7 @@ public class LostPetAnalyzeService {
                     .toList();
             log.info(
                     "lostpet.analyze success mode={} candidateCount={} elapsedMs={}",
-                    request.getMode(),
+                    request.resolveMode(),
                     candidates.size(),
                     System.currentTimeMillis() - startedAt
             );
@@ -46,7 +46,7 @@ public class LostPetAnalyzeService {
         } catch (Exception exception) {
             log.warn(
                     "lostpet.analyze fallback mode={} elapsedMs={} reason={}",
-                    request.getMode(),
+                    request.resolveMode(),
                     System.currentTimeMillis() - startedAt,
                     exception.getClass().getSimpleName()
             );

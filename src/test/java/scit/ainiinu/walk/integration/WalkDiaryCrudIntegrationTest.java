@@ -13,6 +13,7 @@ import scit.ainiinu.common.security.jwt.JwtTokenProvider;
 import scit.ainiinu.member.entity.Member;
 import scit.ainiinu.member.entity.enums.MemberType;
 import scit.ainiinu.member.repository.MemberRepository;
+import scit.ainiinu.testsupport.IntegrationTestProfile;
 import scit.ainiinu.walk.dto.request.WalkDiaryCreateRequest;
 
 import java.time.LocalDate;
@@ -27,11 +28,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = {
-        "animal.registry.api.key=test-key",
         "spring.datasource.url=jdbc:h2:mem:walkdiary-crud-int;MODE=MySQL;NON_KEYWORDS=VALUE;DB_CLOSE_DELAY=-1"
 })
 @AutoConfigureMockMvc
 @Transactional
+@IntegrationTestProfile
 class WalkDiaryCrudIntegrationTest {
 
     @Autowired

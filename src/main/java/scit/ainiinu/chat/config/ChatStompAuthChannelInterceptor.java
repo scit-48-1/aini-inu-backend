@@ -10,6 +10,8 @@ import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Component;
+import scit.ainiinu.common.exception.BusinessException;
+import scit.ainiinu.common.exception.CommonErrorCode;
 import scit.ainiinu.common.security.jwt.JwtTokenProvider;
 
 import java.security.Principal;
@@ -31,12 +33,13 @@ public class ChatStompAuthChannelInterceptor implements ChannelInterceptor {
 
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
             String authorization = accessor.getFirstNativeHeader("Authorization");
-            if (authorization != null && authorization.startsWith(BEARER_PREFIX)) {
-                String token = authorization.substring(BEARER_PREFIX.length());
-                Long memberId = jwtTokenProvider.validateAndGetMemberId(token);
-                Principal principal = new UsernamePasswordAuthenticationToken(memberId.toString(), null);
-                accessor.setUser(principal);
+            if (authorization == null || authorization.isBlank() || !authorization.startsWith(BEARER_PREFIX)) {
+                throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
             }
+            String token = authorization.substring(BEARER_PREFIX.length());
+            Long memberId = jwtTokenProvider.validateAndGetMemberId(token);
+            Principal principal = new UsernamePasswordAuthenticationToken(memberId.toString(), null);
+            accessor.setUser(principal);
         }
 
         return message;

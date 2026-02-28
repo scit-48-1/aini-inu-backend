@@ -5,11 +5,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.web.multipart.MultipartFile;
 import scit.ainiinu.common.exception.BusinessException;
 import scit.ainiinu.community.config.CommunityStorageProperties;
-import scit.ainiinu.community.dto.ImageUploadResponse;
+import scit.ainiinu.community.dto.PresignedImageRequest;
+import scit.ainiinu.community.dto.PresignedImageResponse;
 import scit.ainiinu.community.exception.CommunityErrorCode;
 import scit.ainiinu.community.service.ImageUploadService;
 
@@ -20,8 +19,6 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
 
 class ImageUploadServiceTest {
 
@@ -35,50 +32,101 @@ class ImageUploadServiceTest {
         CommunityStorageProperties properties = new CommunityStorageProperties();
         properties.setPublicBaseUrl("http://localhost:8080");
         properties.getLocal().setBaseDir(tempDir.toString());
+        properties.getPresigned().setExpiresSeconds(300L);
         imageUploadService = new ImageUploadService(properties);
     }
 
     @Nested
-    @DisplayName("로컬 이미지 업로드")
-    class UploadImage {
+    @DisplayName("Presigned URL 발급")
+    class IssuePresignedUrl {
+
+        @Test
+        @DisplayName("유효한 요청이면 uploadUrl/imageUrl을 반환한다")
+        void issueSuccess() {
+            PresignedImageRequest request = new PresignedImageRequest();
+            request.setPurpose("POST");
+            request.setFileName("sample.jpg");
+            request.setContentType("image/jpeg");
+
+            PresignedImageResponse response = imageUploadService.createPresignedUrl(1L, request);
+
+            assertThat(response.getUploadUrl()).contains("/api/v1/images/presigned-upload/");
+            assertThat(response.getImageUrl()).contains("/api/v1/images/local?key=");
+            assertThat(response.getExpiresIn()).isEqualTo(300L);
+            assertThat(response.getMaxFileSizeBytes()).isEqualTo(10 * 1024 * 1024L);
+        }
 
         @Test
         @DisplayName("허용되지 않은 MIME 타입이면 예외가 발생한다")
         void failUnsupportedMimeType() {
-            MultipartFile file = new MockMultipartFile("file", "sample.gif", "image/gif", "gif".getBytes());
+            PresignedImageRequest request = new PresignedImageRequest();
+            request.setPurpose("POST");
+            request.setFileName("sample.gif");
+            request.setContentType("image/gif");
 
-            assertThatThrownBy(() -> imageUploadService.uploadImage(1L, "POST", file))
+            assertThatThrownBy(() -> imageUploadService.createPresignedUrl(1L, request))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", CommunityErrorCode.INVALID_UPLOAD_MIME);
         }
+    }
+
+    @Nested
+    @DisplayName("Presigned 업로드")
+    class UploadByToken {
 
         @Test
-        @DisplayName("10MB 초과 파일이면 예외가 발생한다")
-        void failOversizedFile() {
-            MultipartFile file = mock(MultipartFile.class);
-            given(file.isEmpty()).willReturn(false);
-            given(file.getSize()).willReturn((10 * 1024 * 1024L) + 1);
-            given(file.getContentType()).willReturn("image/jpeg");
-
-            assertThatThrownBy(() -> imageUploadService.uploadImage(1L, "POST", file))
-                    .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", CommunityErrorCode.FILE_SIZE_EXCEEDED);
-        }
-
-        @Test
-        @DisplayName("유효한 요청이면 로컬 파일을 저장하고 imageUrl을 반환한다")
+        @DisplayName("유효한 토큰/콘텐츠로 업로드하면 로컬 파일이 저장된다")
         void uploadSuccess() throws Exception {
-            MultipartFile file = new MockMultipartFile("file", "sample.jpg", "image/jpeg", "jpeg-data".getBytes());
+            PresignedImageRequest request = new PresignedImageRequest();
+            request.setPurpose("POST");
+            request.setFileName("sample.jpg");
+            request.setContentType("image/jpeg");
 
-            ImageUploadResponse response = imageUploadService.uploadImage(1L, "POST", file);
+            PresignedImageResponse issued = imageUploadService.createPresignedUrl(1L, request);
+            String uploadToken = issued.getUploadUrl().substring(issued.getUploadUrl().lastIndexOf('/') + 1);
 
-            assertThat(response.getImageUrl()).contains("/api/v1/images/local?key=");
-            String encodedKey = response.getImageUrl().substring(response.getImageUrl().indexOf("key=") + 4);
+            imageUploadService.uploadByToken(uploadToken, "image/jpeg", "jpeg-data".getBytes());
+
+            String encodedKey = issued.getImageUrl().substring(issued.getImageUrl().indexOf("key=") + 4);
             String decodedKey = URLDecoder.decode(encodedKey, StandardCharsets.UTF_8);
             Path savedPath = tempDir.resolve(decodedKey);
 
             assertThat(Files.exists(savedPath)).isTrue();
             assertThat(Files.readAllBytes(savedPath)).isEqualTo("jpeg-data".getBytes());
+        }
+
+        @Test
+        @DisplayName("동일 토큰 재사용 시 예외가 발생한다")
+        void failTokenReuse() {
+            PresignedImageRequest request = new PresignedImageRequest();
+            request.setPurpose("POST");
+            request.setFileName("sample.jpg");
+            request.setContentType("image/jpeg");
+
+            PresignedImageResponse issued = imageUploadService.createPresignedUrl(1L, request);
+            String uploadToken = issued.getUploadUrl().substring(issued.getUploadUrl().lastIndexOf('/') + 1);
+
+            imageUploadService.uploadByToken(uploadToken, "image/jpeg", "jpeg-data".getBytes());
+
+            assertThatThrownBy(() -> imageUploadService.uploadByToken(uploadToken, "image/jpeg", "jpeg-data".getBytes()))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", CommunityErrorCode.UPLOAD_URL_EXPIRED_OR_INVALID);
+        }
+
+        @Test
+        @DisplayName("MIME 타입이 다르면 예외가 발생한다")
+        void failMimeMismatch() {
+            PresignedImageRequest request = new PresignedImageRequest();
+            request.setPurpose("POST");
+            request.setFileName("sample.jpg");
+            request.setContentType("image/jpeg");
+
+            PresignedImageResponse issued = imageUploadService.createPresignedUrl(1L, request);
+            String uploadToken = issued.getUploadUrl().substring(issued.getUploadUrl().lastIndexOf('/') + 1);
+
+            assertThatThrownBy(() -> imageUploadService.uploadByToken(uploadToken, "image/png", "jpeg-data".getBytes()))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", CommunityErrorCode.INVALID_UPLOAD_MIME);
         }
     }
 }

@@ -37,13 +37,20 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final ChatRealtimeEventHandler chatRealtimeEventHandler;
 
-    public CursorResponse<ChatMessageResponse> getMessages(Long memberId, Long chatRoomId, String cursor, Integer size) {
+    public CursorResponse<ChatMessageResponse> getMessages(
+            Long memberId,
+            Long chatRoomId,
+            String cursor,
+            Integer size,
+            String direction
+    ) {
         validateParticipant(memberId, chatRoomId);
 
         Long parsedCursor = parseCursor(cursor);
         int pageSize = normalizeSize(size);
+        String normalizedDirection = normalizeDirection(direction);
 
-        List<Message> rows = messageRepository.findByRoomIdWithCursor(chatRoomId, parsedCursor, pageSize + 1);
+        List<Message> rows = messageRepository.findByRoomIdWithCursor(chatRoomId, parsedCursor, pageSize + 1, normalizedDirection);
         boolean hasMore = rows.size() > pageSize;
 
         List<Message> contentRows;
@@ -153,6 +160,17 @@ public class MessageService {
             return DEFAULT_SIZE;
         }
         return Math.min(size, MAX_SIZE);
+    }
+
+    private String normalizeDirection(String direction) {
+        if (direction == null || direction.isBlank()) {
+            return "before";
+        }
+        String normalized = direction.trim().toLowerCase();
+        if (!"before".equals(normalized)) {
+            throw new ChatException(ChatErrorCode.INVALID_REQUEST);
+        }
+        return normalized;
     }
 
     private ChatMessageType parseMessageType(String messageType) {
