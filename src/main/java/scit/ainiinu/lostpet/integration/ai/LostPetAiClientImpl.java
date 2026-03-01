@@ -11,15 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 import scit.ainiinu.lostpet.domain.Sighting;
 import scit.ainiinu.lostpet.dto.LostPetAnalyzeRequest;
 
@@ -27,42 +21,22 @@ import scit.ainiinu.lostpet.dto.LostPetAnalyzeRequest;
 @Slf4j
 public class LostPetAiClientImpl implements LostPetAiClient {
 
-    private final RestTemplate restTemplate;
     private final ObjectProvider<VectorStore> vectorStoreProvider;
-
-    @Value("${lostpet.ai.base-url}")
-    private String baseUrl;
-
-    @Value("${lostpet.ai.analyze-path}")
-    private String analyzePath;
-
-    @Value("${lostpet.ai.pipeline:spring-ai}")
-    private String aiPipeline;
 
     @Value("${lostpet.ai.vector-top-k:50}")
     private int vectorTopK;
 
-    public LostPetAiClientImpl(
-            @Qualifier("lostPetAiRestTemplate") RestTemplate restTemplate,
-            ObjectProvider<VectorStore> vectorStoreProvider
-    ) {
-        this.restTemplate = restTemplate;
+    public LostPetAiClientImpl(ObjectProvider<VectorStore> vectorStoreProvider) {
         this.vectorStoreProvider = vectorStoreProvider;
     }
 
     @Override
     public LostPetAiResult analyze(LostPetAnalyzeRequest request) {
-        if (useSpringAiPipeline()) {
-            return analyzeWithSpringAi(request);
-        }
-        return analyzeWithExternalRest(request);
+        return analyzeWithSpringAi(request);
     }
 
     @Override
     public void indexSighting(Sighting sighting) {
-        if (!useSpringAiPipeline()) {
-            return;
-        }
         VectorStore vectorStore = vectorStoreProvider.getIfAvailable();
         if (vectorStore == null) {
             log.warn("lostpet.vector.index skipped reason=vector-store-unavailable sightingId={}", sighting.getId());
@@ -114,27 +88,6 @@ public class LostPetAiClientImpl implements LostPetAiClient {
                 ));
 
         return new LostPetAiResult("spring_ai_vector_search", candidates);
-    }
-
-    private LostPetAiResult analyzeWithExternalRest(LostPetAnalyzeRequest request) {
-        String endpoint = baseUrl + analyzePath;
-        LostPetAnalyzeRequest normalizedRequest = request.normalizeForAi();
-        ResponseEntity<LostPetAiResult> response = restTemplate.exchange(
-                endpoint,
-                HttpMethod.POST,
-                new HttpEntity<>(normalizedRequest),
-                new ParameterizedTypeReference<>() {
-                }
-        );
-        LostPetAiResult body = response.getBody();
-        if (body == null) {
-            return new LostPetAiResult("empty", List.of());
-        }
-        return body;
-    }
-
-    private boolean useSpringAiPipeline() {
-        return "spring-ai".equalsIgnoreCase(aiPipeline);
     }
 
     private Document toSightingDocument(Sighting sighting) {

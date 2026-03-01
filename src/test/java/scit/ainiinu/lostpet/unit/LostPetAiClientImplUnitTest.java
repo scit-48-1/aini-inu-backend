@@ -3,7 +3,6 @@ package scit.ainiinu.lostpet.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -21,12 +20,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.client.RestTemplate;
 import scit.ainiinu.lostpet.domain.Sighting;
 import scit.ainiinu.lostpet.dto.LostPetAnalyzeRequest;
 import scit.ainiinu.lostpet.integration.ai.LostPetAiCandidate;
@@ -38,9 +32,6 @@ import scit.ainiinu.lostpet.integration.ai.LostPetAiResult;
 class LostPetAiClientImplUnitTest {
 
     @Mock
-    private RestTemplate restTemplate;
-
-    @Mock
     private ObjectProvider<VectorStore> vectorStoreProvider;
 
     @Mock
@@ -50,9 +41,7 @@ class LostPetAiClientImplUnitTest {
 
     @BeforeEach
     void setUp() {
-        this.lostPetAiClient = new LostPetAiClientImpl(restTemplate, vectorStoreProvider);
-        ReflectionTestUtils.setField(lostPetAiClient, "baseUrl", "http://localhost:18080");
-        ReflectionTestUtils.setField(lostPetAiClient, "analyzePath", "/api/v1/analyze");
+        this.lostPetAiClient = new LostPetAiClientImpl(vectorStoreProvider);
         ReflectionTestUtils.setField(lostPetAiClient, "vectorTopK", 7);
     }
 
@@ -63,7 +52,6 @@ class LostPetAiClientImplUnitTest {
         @Test
         @DisplayName("spring-ai 파이프라인에서 후보를 점수 정규화/중복 제거해 반환한다")
         void analyzeWithSpringAi() {
-            ReflectionTestUtils.setField(lostPetAiClient, "aiPipeline", "spring-ai");
             given(vectorStoreProvider.getIfAvailable()).willReturn(vectorStore);
 
             Document highScore = Document.builder()
@@ -116,7 +104,6 @@ class LostPetAiClientImplUnitTest {
         @Test
         @DisplayName("spring-ai 파이프라인에서 VectorStore 빈이 없으면 예외를 던진다")
         void analyzeWithSpringAiWithoutVectorStore() {
-            ReflectionTestUtils.setField(lostPetAiClient, "aiPipeline", "spring-ai");
             given(vectorStoreProvider.getIfAvailable()).willReturn(null);
 
             assertThatThrownBy(() -> lostPetAiClient.analyze(sampleRequest()))
@@ -124,29 +111,11 @@ class LostPetAiClientImplUnitTest {
                     .hasMessageContaining("VectorStore");
         }
 
-        @Test
-        @DisplayName("external-rest 파이프라인에서 외부 분석 응답을 그대로 반환한다")
-        void analyzeWithExternalRest() {
-            ReflectionTestUtils.setField(lostPetAiClient, "aiPipeline", "external-rest");
-            LostPetAiResult expected = new LostPetAiResult("external_ok", List.of());
-            given(restTemplate.exchange(
-                    eq("http://localhost:18080/api/v1/analyze"),
-                    eq(HttpMethod.POST),
-                    any(HttpEntity.class),
-                    any(ParameterizedTypeReference.class)
-            )).willReturn(ResponseEntity.ok(expected));
-
-            LostPetAiResult result = lostPetAiClient.analyze(sampleRequest());
-
-            assertThat(result.summary()).isEqualTo("external_ok");
-            assertThat(result.candidates()).isEmpty();
-        }
     }
 
     @Test
     @DisplayName("sighting 저장 후 spring-ai 파이프라인이면 벡터 인덱싱을 시도한다")
     void indexSightingWithSpringAi() {
-        ReflectionTestUtils.setField(lostPetAiClient, "aiPipeline", "spring-ai");
         given(vectorStoreProvider.getIfAvailable()).willReturn(vectorStore);
 
         Sighting sighting = Sighting.create(
