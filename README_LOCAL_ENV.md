@@ -1,86 +1,120 @@
-# Backend Local Env Guide
+# 프론트엔드 개발 온보딩 가이드 (백엔드 Docker 전용)
 
-## 0) Docker Quick Start (Recommended for Frontend Dev)
+## 0) 팀 운영 원칙
 
-Run PostgreSQL + Backend in one shot:
+- 프론트 개발 시 백엔드 로컬 실행은 **Docker만 사용**합니다.
+- 로컬 PostgreSQL 실행 + `./gradlew bootRun` 방식은 사용하지 않습니다.
+- 실제 시크릿 값은 `.env.docker` 파일로만 관리하며, 절대 커밋하지 않습니다.
+
+## 1) 사전 준비
+
+- Docker Desktop(또는 Docker Engine + Compose)
+- Node.js / npm
+
+## 2) 시크릿 파일 전달 방식
+
+`aini-inu-backend/.env.docker` 파일은 팀에서 별도로 전달받아야 합니다.
+전달은 1Password, Bitwarden, 사내 시크릿 저장소, 보안 메신저 같은 안전한 경로를 사용합니다.
+
+`.env.docker`는 절대 Git에 커밋하지 않습니다.
+
+파일이 없다면 먼저 예시를 복사합니다.
 
 ```bash
 cd aini-inu-backend
 cp .env.docker.example .env.docker
-./scripts/docker-up.sh
 ```
 
-Stop services:
+그다음 전달받은 실제 값으로 `.env.docker`를 채웁니다.
 
-```bash
-./scripts/docker-down.sh
-```
+## 3) `.env.docker` 환경변수
 
-Tail logs:
+필수:
+- `JWT_SECRET`
 
-```bash
-./scripts/docker-logs.sh
-```
+선택(기능 사용 여부에 따라 설정):
+- `GEMINI_API_KEY`
+- `GEMINI_EMBEDDING_MODEL`
+- `LOSTPET_CHAT_BASE_URL`
+- `LOSTPET_CHAT_DIRECT_CREATE_PATH`
+- `LOSTPET_AI_VECTOR_TOP_K`
+- `LOSTPET_SEARCH_SESSION_TTL_HOURS`
+- `LOSTPET_SEARCH_TOP_N`
+- `SPRING_AI_PGVECTOR_INITIALIZE_SCHEMA`
+- `SPRING_AI_PGVECTOR_TABLE_NAME`
+- `SPRING_AI_PGVECTOR_SCHEMA_NAME`
+- `SPRING_AI_PGVECTOR_DIMENSIONS`
+- `SPRING_AI_PGVECTOR_DISTANCE_TYPE`
+- `SPRING_AI_PGVECTOR_INDEX_TYPE`
+- `COMMUNITY_STORAGE_PRESIGNED_EXPIRES_SECONDS`
 
-Docker required env keys in `.env.docker`:
-- Required: `JWT_SECRET`, `GEMINI_API_KEY`
-- Optional:
-  - `GEMINI_EMBEDDING_MODEL`
-  - `LOSTPET_CHAT_BASE_URL`, `LOSTPET_CHAT_DIRECT_CREATE_PATH`
-  - `LOSTPET_AI_VECTOR_TOP_K`
-  - `LOSTPET_SEARCH_SESSION_TTL_HOURS`, `LOSTPET_SEARCH_TOP_N`
-  - `SPRING_AI_PGVECTOR_*`
-  - `COMMUNITY_STORAGE_PRESIGNED_EXPIRES_SECONDS`
+## 4) 백엔드 + DB 실행
 
-## 1) Prepare `.env`
+아래 명령 한 번으로 PostgreSQL + 백엔드를 함께 실행합니다.
 
 ```bash
 cd aini-inu-backend
-cp .env.example .env
+./scripts/docker-up.sh
 ```
 
-Fill required keys:
-- `GEMINI_API_KEY`
-- `LOSTPET_CHAT_BASE_URL`, `LOSTPET_CHAT_DIRECT_CREATE_PATH`
-- `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`
-
-## 2) PostgreSQL + pgvector
-
-Ensure local PostgreSQL is running and execute:
-
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS hstore;
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-```
-
-## 3) Run backend
+자주 쓰는 명령:
 
 ```bash
-./gradlew bootRun
+./scripts/docker-logs.sh           # 백엔드 로그 확인
+./scripts/docker-logs.sh postgres  # DB 로그 확인
+./scripts/docker-down.sh           # 전체 중지
 ```
 
-`spring-dotenv` loads `.env` automatically during local run.
+## 5) 백엔드 정상 실행 확인
 
-## 4) Default seed data
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 
-At startup, SQL init loads:
-- `db/seed/00_lookup_seed.sql` (breed/personality/walking-style/member personality type)
-- `db/seed/10_core_sample_seed.sql` (member/pet/walk/chat/lostpet/community sample graph)
-- `db/seed/99_reset_sequences.sql` (sequence alignment after fixed-id seed)
+## 6) 프론트 로컬 연동 설정
 
-If any DDL/seed script fails, startup also fails (`spring.sql.init.continue-on-error=false`).
+`aini-inu-frontend/.env.local` 파일을 생성하고 아래 값을 넣습니다.
 
-Useful sample accounts:
+```env
+NEXT_PUBLIC_ENABLE_MSW=false
+NEXT_PUBLIC_API_PROXY_TARGET=http://localhost:8080
+NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
+```
+
+프론트 실행:
+
+```bash
+cd aini-inu-frontend
+npm run dev
+```
+
+## 7) Swagger에서 인증 API 테스트하기
+
+1. `POST /api/v1/test/auth/token?memberId=1` 호출
+2. 응답의 `data.accessToken` 복사
+3. Swagger 우측 상단 `Authorize` 클릭
+4. 토큰 값 입력(`Bearer` 접두어는 넣지 않음)
+5. 인증이 필요한 API 테스트
+
+## 8) 기본 시드 데이터 안내
+
+백엔드 시작 시 아래 시드가 자동 적재됩니다.
+- `db/seed/00_lookup_seed.sql`
+- `db/seed/10_core_sample_seed.sql`
+- `db/seed/99_reset_sequences.sql`
+
+예시 계정:
 - `owner01@test.com` (`id=1`, `PET_OWNER`)
 - `owner02@test.com` (`id=2`, `PET_OWNER`)
 - `finder05@test.com` (`id=5`, `PET_OWNER`)
 - `comm07@test.com` (`id=7`, `NON_PET_OWNER`)
 
-For local development token issuance, you can also use:
-- `POST /api/v1/test/auth/token?memberId={id}`
+## 9) 트러블슈팅
 
-## 5) Swagger / OpenAPI
-
-- OpenAPI JSON: `GET /v3/api-docs`
-- Swagger UI: `GET /swagger-ui/index.html`
+- `.env.docker` 파일이 없어서 `docker-up.sh`가 실패하는 경우:
+  - `.env.docker.example` 복사 후 실제 값 입력
+- 백엔드가 기동되지 않는 경우:
+  - `./scripts/docker-logs.sh`로 오류 로그 확인
+  - `8080`, `5432` 포트 충돌 여부 확인
+- 프론트에서 API 호출이 실패하는 경우:
+  - `NEXT_PUBLIC_API_PROXY_TARGET=http://localhost:8080` 확인
+  - `docker compose ps`로 컨테이너 상태 확인
