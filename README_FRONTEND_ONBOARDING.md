@@ -10,6 +10,16 @@
 
 - Docker Desktop(또는 Docker Engine + Compose)
 - Node.js / npm (프론트 프로젝트에서 이미 사용중일 것)
+- Docker 엔진이 반드시 실행 중이어야 함 (Docker Desktop에서 Running 상태 확인)
+
+실행 전 점검 명령:
+
+```bash
+docker info
+docker compose version
+```
+
+`docker info`에서 에러가 나면 Docker 엔진이 꺼져 있는 상태이므로, Docker Desktop을 먼저 실행한 뒤 다시 진행합니다.
 
 ## 2) 시크릿 파일 전달 방식
 
@@ -56,6 +66,8 @@ cp .env.docker.example .env.docker
 cd aini-inu-backend
 ./scripts/docker-up.sh
 ```
+
+`Cannot connect to the Docker daemon` 오류가 나오면 Docker Desktop이 실행 중인지 먼저 확인합니다.
 
 자주 쓰는 명령:
 
