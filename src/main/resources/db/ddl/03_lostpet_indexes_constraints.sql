@@ -65,8 +65,6 @@ CREATE TABLE IF NOT EXISTS lost_pet_search_candidate (
     status VARCHAR(20) NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
-    CONSTRAINT uk_lost_pet_search_candidate_session_sighting UNIQUE (session_id, sighting_id),
-    CONSTRAINT uk_lost_pet_search_candidate_session_rank UNIQUE (session_id, rank_order),
     CONSTRAINT fk_lost_pet_search_candidate_session
         FOREIGN KEY (session_id) REFERENCES lost_pet_search_session(id),
     CONSTRAINT fk_lost_pet_search_candidate_sighting
@@ -87,7 +85,6 @@ CREATE TABLE IF NOT EXISTS lost_pet_match (
     matched_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
-    CONSTRAINT uk_lost_pet_match_pair UNIQUE (lost_pet_id, sighting_id),
     CONSTRAINT fk_lost_pet_match_lost_pet
         FOREIGN KEY (lost_pet_id) REFERENCES lost_pet_report(id),
     CONSTRAINT fk_lost_pet_match_sighting
@@ -118,11 +115,17 @@ CREATE INDEX IF NOT EXISTS idx_lost_pet_search_session_owner_lost_pet_created
 CREATE INDEX IF NOT EXISTS idx_lost_pet_search_session_expires_at
     ON lost_pet_search_session (expires_at);
 
-CREATE INDEX IF NOT EXISTS idx_lost_pet_search_candidate_session_rank
-    ON lost_pet_search_candidate (session_id, rank_order);
-
 CREATE INDEX IF NOT EXISTS idx_lost_pet_search_candidate_session_score
     ON lost_pet_search_candidate (session_id, score_total DESC, rank_order ASC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_lost_pet_search_candidate_session_sighting
+    ON lost_pet_search_candidate (session_id, sighting_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_lost_pet_search_candidate_session_rank
+    ON lost_pet_search_candidate (session_id, rank_order);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_lost_pet_match_pair
+    ON lost_pet_match (lost_pet_id, sighting_id);
 
 CREATE INDEX IF NOT EXISTS idx_lostpet_vector_store_embedding_hnsw
     ON lostpet_vector_store
