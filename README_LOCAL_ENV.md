@@ -1,5 +1,37 @@
 # Backend Local Env Guide
 
+## 0) Docker Quick Start (Recommended for Frontend Dev)
+
+Run PostgreSQL + Backend in one shot:
+
+```bash
+cd aini-inu-backend
+cp .env.docker.example .env.docker
+./scripts/docker-up.sh
+```
+
+Stop services:
+
+```bash
+./scripts/docker-down.sh
+```
+
+Tail logs:
+
+```bash
+./scripts/docker-logs.sh
+```
+
+Docker required env keys in `.env.docker`:
+- Required: `JWT_SECRET`, `GEMINI_API_KEY`
+- Optional:
+  - `GEMINI_EMBEDDING_MODEL`
+  - `LOSTPET_CHAT_BASE_URL`, `LOSTPET_CHAT_DIRECT_CREATE_PATH`
+  - `LOSTPET_AI_VECTOR_TOP_K`
+  - `LOSTPET_SEARCH_SESSION_TTL_HOURS`, `LOSTPET_SEARCH_TOP_N`
+  - `SPRING_AI_PGVECTOR_*`
+  - `COMMUNITY_STORAGE_PRESIGNED_EXPIRES_SECONDS`
+
 ## 1) Prepare `.env`
 
 ```bash
