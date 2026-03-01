@@ -5,9 +5,14 @@ import lombok.Builder;
 
 @Builder
 public record LostPetMatchCandidateResponse(
+        Long sessionId,
         Long sightingId,
         Long finderId,
-        BigDecimal similarityTotal,
+        BigDecimal scoreSimilarity,
+        BigDecimal scoreDistance,
+        BigDecimal scoreRecency,
+        BigDecimal scoreTotal,
+        Integer rank,
         String status
 ) {
 }

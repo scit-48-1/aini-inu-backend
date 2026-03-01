@@ -1,6 +1,7 @@
 package scit.ainiinu.lostpet.dto;
 
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,11 +15,16 @@ import lombok.Setter;
 @AllArgsConstructor
 public class LostPetAnalyzeRequest {
 
+    @NotNull(message = "lostPetId는 필수입니다.")
+    private Long lostPetId;
+
     private String image;
 
     private String imageUrl;
 
     private String mode;
+
+    private String queryText;
 
     private Double latitude;
     private Double longitude;
@@ -45,9 +51,11 @@ public class LostPetAnalyzeRequest {
     public LostPetAnalyzeRequest normalizeForAi() {
         String resolvedImage = resolveImageSource();
         return LostPetAnalyzeRequest.builder()
+                .lostPetId(lostPetId)
                 .image(resolvedImage)
                 .imageUrl(resolvedImage)
                 .mode(resolveMode())
+                .queryText(queryText)
                 .latitude(latitude)
                 .longitude(longitude)
                 .build();

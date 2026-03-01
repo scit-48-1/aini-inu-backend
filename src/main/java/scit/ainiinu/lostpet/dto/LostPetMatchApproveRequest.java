@@ -13,5 +13,8 @@ import lombok.Setter;
 public class LostPetMatchApproveRequest {
 
     @NotNull
+    private Long sessionId;
+
+    @NotNull
     private Long sightingId;
 }

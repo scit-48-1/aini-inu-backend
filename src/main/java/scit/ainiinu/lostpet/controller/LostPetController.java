@@ -10,13 +10,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import scit.ainiinu.common.response.ApiResponse;
 import scit.ainiinu.common.response.SliceResponse;
 import scit.ainiinu.common.security.annotation.CurrentMember;
-import scit.ainiinu.common.security.annotation.Public;
 import scit.ainiinu.lostpet.domain.LostPetReportStatus;
 import scit.ainiinu.lostpet.dto.LostPetAnalyzeRequest;
 import scit.ainiinu.lostpet.dto.LostPetAnalyzeResponse;
@@ -67,22 +67,23 @@ public class LostPetController {
         return ResponseEntity.ok(ApiResponse.success(lostPetService.detail(memberId, lostPetId)));
     }
 
-    @Public
     @PostMapping("/analyze")
     public ResponseEntity<ApiResponse<LostPetAnalyzeResponse>> analyze(
+            @CurrentMember Long memberId,
             @Valid @RequestBody LostPetAnalyzeRequest request
     ) {
-        return ResponseEntity.ok(ApiResponse.success(lostPetAnalyzeService.analyze(request)));
+        return ResponseEntity.ok(ApiResponse.success(lostPetAnalyzeService.analyze(memberId, request)));
     }
 
-    @Public
     @GetMapping("/{lostPetId}/match")
     public ResponseEntity<ApiResponse<SliceResponse<LostPetMatchCandidateResponse>>> matchCandidates(
+            @CurrentMember Long memberId,
             @PathVariable("lostPetId") Long lostPetId,
+            @RequestParam(name = "sessionId", required = false) Long sessionId,
             @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(ApiResponse.success(SliceResponse.of(
-                lostPetMatchQueryService.findCandidates(lostPetId, pageable)
+                lostPetMatchQueryService.findCandidates(lostPetId, memberId, sessionId, pageable)
         )));
     }
 
@@ -90,10 +91,11 @@ public class LostPetController {
     public ResponseEntity<ApiResponse<LostPetMatchResponse>> approveMatch(
             @CurrentMember Long memberId,
             @PathVariable("lostPetId") Long lostPetId,
+            @RequestHeader(name = "Authorization", required = false) String authorizationHeader,
             @Valid @RequestBody LostPetMatchApproveRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                lostPetMatchApprovalService.approve(lostPetId, memberId, request)
+                lostPetMatchApprovalService.approve(lostPetId, memberId, request, authorizationHeader)
         ));
     }
 }

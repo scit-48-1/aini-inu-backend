@@ -7,6 +7,11 @@ import lombok.Builder;
 public record LostPetAnalyzeCandidateResponse(
         Long sightingId,
         Long finderId,
-        BigDecimal similarityTotal
+        BigDecimal scoreSimilarity,
+        BigDecimal scoreDistance,
+        BigDecimal scoreRecency,
+        BigDecimal scoreTotal,
+        Integer rank,
+        String status
 ) {
 }
