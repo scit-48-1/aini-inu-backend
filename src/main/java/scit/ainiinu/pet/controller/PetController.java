@@ -1,6 +1,9 @@
 package scit.ainiinu.pet.controller;
 
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -27,6 +30,8 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1")
+@Tag(name = "Pets", description = "반려견 API")
+@SecurityRequirement(name = "bearerAuth")
 public class PetController {
 
     private final PetService petService;
@@ -35,6 +40,7 @@ public class PetController {
      * 반려견 등록
      */
     @PostMapping("/pets")
+    @Operation(summary = "반려견 등록", description = "현재 로그인한 회원의 반려견을 등록합니다.")
     public ResponseEntity<ApiResponse<PetResponse>> createPet(
             @CurrentMember Long memberId,
             @Valid @RequestBody PetCreateRequest request
@@ -47,6 +53,7 @@ public class PetController {
      * 반려견 정보 수정
      */
     @PatchMapping("/pets/{petId}")
+    @Operation(summary = "반려견 수정", description = "등록된 반려견 정보를 부분 수정합니다.")
     public ResponseEntity<ApiResponse<PetResponse>> updatePet(
             @CurrentMember Long memberId,
             @PathVariable Long petId,
@@ -60,6 +67,7 @@ public class PetController {
      * 반려견 삭제
      */
     @DeleteMapping("/pets/{petId}")
+    @Operation(summary = "반려견 삭제", description = "등록된 반려견을 삭제합니다.")
     public ResponseEntity<ApiResponse<Void>> deletePet(
             @CurrentMember Long memberId,
             @PathVariable Long petId
@@ -72,6 +80,7 @@ public class PetController {
      * 내 반려견 목록 조회
      */
     @GetMapping("/pets")
+    @Operation(summary = "내 반려견 목록 조회", description = "현재 로그인한 회원의 반려견 목록을 조회합니다.")
     public ResponseEntity<ApiResponse<List<PetResponse>>> getMyPets(
             @CurrentMember Long memberId
     ) {
@@ -83,6 +92,7 @@ public class PetController {
      * 메인 반려견 변경
      */
     @PatchMapping("/pets/{petId}/main")
+    @Operation(summary = "메인 반려견 변경", description = "대표 반려견을 변경합니다.")
     public ResponseEntity<ApiResponse<MainPetChangeResponse>> changeMainPet(
             @CurrentMember Long memberId,
             @PathVariable Long petId
@@ -95,6 +105,7 @@ public class PetController {
      * 견종 목록 조회
      */
     @GetMapping("/breeds")
+    @Operation(summary = "견종 목록 조회", description = "서비스에서 지원하는 견종 목록을 조회합니다.")
     public ResponseEntity<ApiResponse<List<BreedResponse>>> getBreeds() {
         List<BreedResponse> response = petService.getAllBreeds();
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -104,6 +115,7 @@ public class PetController {
      * 성격 카테고리 목록 조회
      */
     @GetMapping("/personalities")
+    @Operation(summary = "반려견 성격 목록 조회", description = "서비스에서 지원하는 반려견 성격 카테고리를 조회합니다.")
     public ResponseEntity<ApiResponse<List<PersonalityResponse>>> getPersonalities() {
         List<PersonalityResponse> response = petService.getAllPersonalities();
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -113,6 +125,7 @@ public class PetController {
      * 산책 스타일 목록 조회
      */
     @GetMapping("/walking-styles")
+    @Operation(summary = "산책 스타일 목록 조회", description = "서비스에서 지원하는 산책 스타일 카테고리를 조회합니다.")
     public ResponseEntity<ApiResponse<List<WalkingStyleResponse>>> getWalkingStyles() {
         List<WalkingStyleResponse> response = petService.getAllWalkingStyles();
         return ResponseEntity.ok(ApiResponse.success(response));

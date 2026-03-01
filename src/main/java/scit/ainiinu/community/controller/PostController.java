@@ -1,6 +1,9 @@
 package scit.ainiinu.community.controller;
 
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -22,12 +25,15 @@ import scit.ainiinu.community.service.PostService;
 @RestController
 @RequestMapping("/api/v1/posts")
 @RequiredArgsConstructor
+@Tag(name = "Community", description = "커뮤니티 API")
+@SecurityRequirement(name = "bearerAuth")
 public class PostController {
 
     private final PostService postService;
 
     // 게시글 목록 조회 (무한 스크롤)
     @GetMapping
+    @Operation(summary = "게시글 목록 조회", description = "무한 스크롤 기반으로 게시글 목록을 조회합니다.")
     public ResponseEntity<ApiResponse<SliceResponse<PostResponse>>> getPosts(
             @CurrentMember Long memberId,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
@@ -38,6 +44,7 @@ public class PostController {
 
     // 게시글 상세 조회
     @GetMapping("/{postId}")
+    @Operation(summary = "게시글 상세 조회", description = "게시글 단건 상세를 조회합니다.")
     public ResponseEntity<ApiResponse<PostDetailResponse>> getPost(
             @CurrentMember Long memberId,
             @PathVariable("postId") Long postId
@@ -48,6 +55,7 @@ public class PostController {
 
     // 댓글 목록 조회
     @GetMapping("/{postId}/comments")
+    @Operation(summary = "댓글 목록 조회", description = "게시글 댓글 목록을 조회합니다.")
     public ResponseEntity<ApiResponse<SliceResponse<CommentResponse>>> getComments(
             @CurrentMember Long memberId,
             @PathVariable("postId") Long postId,
@@ -59,6 +67,7 @@ public class PostController {
 
     // 게시글 수정
     @PatchMapping("/{postId}")
+    @Operation(summary = "게시글 수정", description = "게시글 작성자가 내용을 수정합니다.")
     public ResponseEntity<ApiResponse<PostResponse>> updatePost(
             @CurrentMember Long authorId,
             @PathVariable("postId") Long postId,
@@ -70,6 +79,7 @@ public class PostController {
 
     // 게시글 삭제
     @DeleteMapping("/{postId}")
+    @Operation(summary = "게시글 삭제", description = "게시글 작성자가 게시글을 삭제합니다.")
     public ResponseEntity<ApiResponse<Void>> deletePost(
             @CurrentMember Long authorId,
             @PathVariable("postId") Long postId
@@ -80,6 +90,7 @@ public class PostController {
 
     // 좋아요 토글
     @PostMapping("/{postId}/like")
+    @Operation(summary = "좋아요 토글", description = "게시글 좋아요 상태를 토글합니다.")
     public ResponseEntity<ApiResponse<PostLikeResponse>> toggleLike(
             @CurrentMember Long memberId,
             @PathVariable("postId") Long postId
@@ -90,6 +101,7 @@ public class PostController {
 
     // 댓글 작성
     @PostMapping("/{postId}/comments")
+    @Operation(summary = "댓글 작성", description = "게시글에 댓글을 작성합니다.")
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(
             @CurrentMember Long authorId,
             @PathVariable("postId") Long postId,
@@ -101,6 +113,7 @@ public class PostController {
 
     // 댓글 삭제
     @DeleteMapping("/{postId}/comments/{commentId}")
+    @Operation(summary = "댓글 삭제", description = "댓글 작성자 또는 게시글 작성자가 댓글을 삭제합니다.")
     public ResponseEntity<ApiResponse<Void>> deleteComment(
             @CurrentMember Long authorId,
             @PathVariable("postId") Long postId,
@@ -112,6 +125,7 @@ public class PostController {
 
     //게시글 생성
     @PostMapping
+    @Operation(summary = "게시글 생성", description = "새 게시글을 생성합니다.")
     public ResponseEntity<ApiResponse<PostResponse>> create(
             @CurrentMember Long authorId,
             @RequestBody @Valid PostCreateRequest request

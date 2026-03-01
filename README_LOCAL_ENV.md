@@ -47,3 +47,8 @@ Useful sample accounts:
 
 For local development token issuance, you can also use:
 - `POST /api/v1/test/auth/token?memberId={id}`
+
+## 5) Swagger / OpenAPI
+
+- OpenAPI JSON: `GET /v3/api-docs`
+- Swagger UI: `GET /swagger-ui/index.html`

@@ -1,5 +1,9 @@
 package scit.ainiinu.common.security.controller;
 
+import io.swagger.v3.oas.annotations.Hidden;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +26,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/test/auth")
 @RequiredArgsConstructor
 @Public  // 인증 없이 접근 가능
+@Tag(name = "Internal", description = "개발/테스트 보조 API")
 public class TestAuthController {
 
     private final JwtTokenProvider jwtTokenProvider;
@@ -33,6 +38,8 @@ public class TestAuthController {
      * @return Access Token 및 Refresh Token
      */
     @PostMapping("/token")
+    @Operation(summary = "테스트 토큰 발급", description = "개발환경에서 memberId 기준 Access/Refresh Token을 발급합니다.")
+    @SecurityRequirements()
     public ResponseEntity<ApiResponse<Map<String, String>>> generateTestToken(
             @RequestParam(defaultValue = "1") Long memberId
     ) {
@@ -56,6 +63,7 @@ public class TestAuthController {
      * @return 인증된 회원 정보
      */
     @GetMapping("/me")
+    @Hidden
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCurrentMember(
             @scit.ainiinu.common.security.annotation.CurrentMember Long memberId
     ) {
