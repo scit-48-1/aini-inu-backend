@@ -108,6 +108,158 @@ class LostPetIntegrationTest {
     }
 
     @Nested
+    @DisplayName("인증/권한 정책")
+    class AuthPolicyFlow {
+
+        @Test
+        @DisplayName("실종 신고 생성 API는 인증이 없으면 401을 반환한다")
+        void lostPetCreateRequiresAuth() throws Exception {
+            String createRequest = """
+                    {
+                      "petName": "Momo",
+                      "breed": "Poodle",
+                      "photoUrl": "https://cdn/momo.jpg",
+                      "description": "desc",
+                      "lastSeenAt": "2026-02-26T10:00:00",
+                      "lastSeenLocation": "Gangnam"
+                    }
+                    """;
+
+            mockMvc.perform(post("/api/v1/lost-pets")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(createRequest))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.errorCode").value("C101"));
+        }
+
+        @Test
+        @DisplayName("실종 목록 조회 API는 인증이 없으면 401을 반환한다")
+        void lostPetListRequiresAuth() throws Exception {
+            mockMvc.perform(get("/api/v1/lost-pets"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.errorCode").value("C101"));
+        }
+
+        @Test
+        @DisplayName("실종 상세 조회 API는 인증이 없으면 401을 반환한다")
+        void lostPetDetailRequiresAuth() throws Exception {
+            mockMvc.perform(get("/api/v1/lost-pets/1"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.errorCode").value("C101"));
+        }
+
+        @Test
+        @DisplayName("매치 승인 API는 인증이 없으면 401을 반환한다")
+        void matchApproveRequiresAuth() throws Exception {
+            String approveRequest = """
+                    {
+                      "sessionId": 1,
+                      "sightingId": 2
+                    }
+                    """;
+
+            mockMvc.perform(post("/api/v1/lost-pets/1/match")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(approveRequest))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.errorCode").value("C101"));
+        }
+
+        @Test
+        @DisplayName("제보 등록 API는 인증이 없으면 401을 반환한다")
+        void sightingCreateRequiresAuth() throws Exception {
+            String request = """
+                    {
+                      "photoUrl": "https://cdn/sightings/1.jpg",
+                      "foundAt": "2026-02-26T11:10:00",
+                      "foundLocation": "Yeoksam",
+                      "memo": "brown collar"
+                    }
+                    """;
+
+            mockMvc.perform(post("/api/v1/sightings")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(request))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.errorCode").value("C101"));
+        }
+
+        @Test
+        @DisplayName("타인 실종 상세 조회는 403을 반환한다")
+        void lostPetDetailForbiddenForNonOwner() throws Exception {
+            String ownerToken = jwtTokenProvider.generateAccessToken(10L);
+            String otherToken = jwtTokenProvider.generateAccessToken(99L);
+            long lostPetId = createLostPet(ownerToken);
+
+            mockMvc.perform(get("/api/v1/lost-pets/" + lostPetId)
+                            .header("Authorization", "Bearer " + otherToken))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.errorCode").value("L403"));
+        }
+
+        @Test
+        @DisplayName("타인 실종 분석 요청은 403을 반환한다")
+        void analyzeForbiddenForNonOwner() throws Exception {
+            String ownerToken = jwtTokenProvider.generateAccessToken(10L);
+            String otherToken = jwtTokenProvider.generateAccessToken(99L);
+            long lostPetId = createLostPet(ownerToken);
+            String analyzeRequest = """
+                    {
+                      "lostPetId": %d,
+                      "imageUrl": "https://cdn/unknown.jpg",
+                      "mode": "LOST"
+                    }
+                    """.formatted(lostPetId);
+
+            mockMvc.perform(post("/api/v1/lost-pets/analyze")
+                            .with(csrf())
+                            .header("Authorization", "Bearer " + otherToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(analyzeRequest))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.errorCode").value("L403"));
+        }
+
+        @Test
+        @DisplayName("타인 매치 후보 조회는 403을 반환한다")
+        void matchForbiddenForNonOwner() throws Exception {
+            String ownerToken = jwtTokenProvider.generateAccessToken(10L);
+            String otherToken = jwtTokenProvider.generateAccessToken(99L);
+            long lostPetId = createLostPet(ownerToken);
+
+            mockMvc.perform(get("/api/v1/lost-pets/" + lostPetId + "/match")
+                            .header("Authorization", "Bearer " + otherToken))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.errorCode").value("L403"));
+        }
+
+        @Test
+        @DisplayName("타인 매치 승인 요청은 403을 반환한다")
+        void matchApproveForbiddenForNonOwner() throws Exception {
+            String ownerToken = jwtTokenProvider.generateAccessToken(10L);
+            String otherToken = jwtTokenProvider.generateAccessToken(99L);
+            long lostPetId = createLostPet(ownerToken);
+            String approveRequest = """
+                    {
+                      "sessionId": 1,
+                      "sightingId": 2
+                    }
+                    """;
+
+            mockMvc.perform(post("/api/v1/lost-pets/" + lostPetId + "/match")
+                            .with(csrf())
+                            .header("Authorization", "Bearer " + otherToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(approveRequest))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.errorCode").value("L403"));
+        }
+    }
+
+    @Nested
     @DisplayName("AI/매치 플로우")
     class AnalyzeAndMatchFlow {
 
