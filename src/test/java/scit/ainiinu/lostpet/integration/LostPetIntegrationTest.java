@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -17,15 +19,20 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import scit.ainiinu.common.security.jwt.JwtTokenProvider;
+import scit.ainiinu.lostpet.integration.ai.LostPetAiCandidate;
 import scit.ainiinu.lostpet.integration.ai.LostPetAiClient;
 import scit.ainiinu.lostpet.integration.ai.LostPetAiResult;
 import scit.ainiinu.lostpet.integration.chat.ChatRoomDirectClient;
+import scit.ainiinu.lostpet.domain.LostPetReport;
+import scit.ainiinu.lostpet.domain.LostPetSearchSession;
+import scit.ainiinu.lostpet.repository.LostPetReportRepository;
+import scit.ainiinu.lostpet.repository.LostPetSearchSessionRepository;
 import scit.ainiinu.testsupport.IntegrationTestProfile;
 
 @SpringBootTest
@@ -42,6 +49,12 @@ class LostPetIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private LostPetReportRepository lostPetReportRepository;
+
+    @Autowired
+    private LostPetSearchSessionRepository lostPetSearchSessionRepository;
 
     @MockitoBean
     private LostPetAiClient lostPetAiClient;
@@ -99,44 +112,228 @@ class LostPetIntegrationTest {
     class AnalyzeAndMatchFlow {
 
         @Test
-        @DisplayName("AI 예외 발생 시에도 200 + fallback 응답을 반환한다")
-        void analyzeFallbackResponse() throws Exception {
-            given(lostPetAiClient.analyze(any())).willThrow(new RuntimeException("timeout"));
-
+        @DisplayName("분석 API는 인증이 없으면 401을 반환한다")
+        void analyzeRequiresAuth() throws Exception {
             String analyzeRequest = """
                     {
+                      "lostPetId": 1,
                       "imageUrl": "https://cdn/unknown.jpg",
                       "mode": "LOST"
                     }
                     """;
 
             mockMvc.perform(post("/api/v1/lost-pets/analyze")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(analyzeRequest))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.errorCode").value("C101"));
+        }
+
+        @Test
+        @DisplayName("매치 후보 조회 API는 인증이 없으면 401을 반환한다")
+        void matchRequiresAuth() throws Exception {
+            mockMvc.perform(get("/api/v1/lost-pets/1/match"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.errorCode").value("C101"));
+        }
+
+        @Test
+        @DisplayName("AI 예외 발생 시에도 200 + fallback 응답을 반환한다")
+        void analyzeFallbackResponse() throws Exception {
+            Long ownerId = 10L;
+            String ownerToken = jwtTokenProvider.generateAccessToken(ownerId);
+            long lostPetId = createLostPet(ownerToken);
+
+            given(lostPetAiClient.analyze(any())).willThrow(new RuntimeException("timeout"));
+
+            String analyzeRequest = """
+                    {
+                      "lostPetId": %d,
+                      "imageUrl": "https://cdn/unknown.jpg",
+                      "mode": "LOST"
+                    }
+                    """.formatted(lostPetId);
+
+            mockMvc.perform(post("/api/v1/lost-pets/analyze")
+                            .with(csrf())
+                            .header("Authorization", "Bearer " + ownerToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(analyzeRequest))
                     .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.sessionId").exists())
                     .andExpect(jsonPath("$.data.fallback").value(true))
                     .andExpect(jsonPath("$.data.candidates").isArray());
         }
 
         @Test
-        @DisplayName("AI 성공 시 후보와 요약을 반환한다")
-        void analyzeSuccessResponse() throws Exception {
+        @DisplayName("분석-후보조회-승인-채팅연결까지 세션 기반으로 동작한다")
+        void analyzeMatchApproveFlow() throws Exception {
+            Long ownerId = 10L;
+            Long finderId = 22L;
+            String ownerToken = jwtTokenProvider.generateAccessToken(ownerId);
+            String finderToken = jwtTokenProvider.generateAccessToken(finderId);
+
+            long lostPetId = createLostPet(ownerToken);
+            long sightingId = createSighting(finderToken);
+
             given(lostPetAiClient.analyze(any()))
-                    .willReturn(new LostPetAiResult("ok", List.of()));
+                    .willReturn(new LostPetAiResult(
+                            "ok",
+                            List.of(new LostPetAiCandidate(sightingId, finderId, new BigDecimal("0.91000")))
+                    ));
+            given(chatRoomDirectClient.createDirectRoom(any(), any())).willReturn(777L);
 
             String analyzeRequest = """
                     {
+                      "lostPetId": %d,
                       "imageUrl": "https://cdn/unknown.jpg",
                       "mode": "LOST"
                     }
-                    """;
+                    """.formatted(lostPetId);
 
-            mockMvc.perform(post("/api/v1/lost-pets/analyze")
+            MvcResult analyzeResult = mockMvc.perform(post("/api/v1/lost-pets/analyze")
+                            .with(csrf())
+                            .header("Authorization", "Bearer " + ownerToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(analyzeRequest))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.fallback").value(false))
-                    .andExpect(jsonPath("$.data.summary").value("ok"));
+                    .andExpect(jsonPath("$.data.summary").value("ok"))
+                    .andExpect(jsonPath("$.data.candidates[0].sightingId").value(sightingId))
+                    .andReturn();
+
+            Long sessionId = extractLongDataField(analyzeResult, "sessionId");
+
+            mockMvc.perform(get("/api/v1/lost-pets/" + lostPetId + "/match?sessionId=" + sessionId)
+                            .header("Authorization", "Bearer " + ownerToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.content[0].sessionId").value(sessionId))
+                    .andExpect(jsonPath("$.data.content[0].sightingId").value(sightingId));
+
+            String approveRequest = """
+                    {
+                      "sessionId": %d,
+                      "sightingId": %d
+                    }
+                    """.formatted(sessionId, sightingId);
+
+            mockMvc.perform(post("/api/v1/lost-pets/" + lostPetId + "/match")
+                            .with(csrf())
+                            .header("Authorization", "Bearer " + ownerToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(approveRequest))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.status").value("CHAT_LINKED"))
+                    .andExpect(jsonPath("$.data.chatRoomId").value(777L));
         }
+
+        @Test
+        @DisplayName("만료된 세션으로 후보 조회 시 410을 반환한다")
+        void matchExpiredSessionResponse() throws Exception {
+            Long ownerId = 10L;
+            String ownerToken = jwtTokenProvider.generateAccessToken(ownerId);
+            long lostPetId = createLostPet(ownerToken);
+
+            LostPetReport report = lostPetReportRepository.findById(lostPetId).orElseThrow();
+            LostPetSearchSession expiredSession = lostPetSearchSessionRepository.save(
+                    LostPetSearchSession.create(
+                            ownerId,
+                            report,
+                            "LOST",
+                            "https://cdn/expired.jpg",
+                            null,
+                            LocalDateTime.now().minusMinutes(1)
+                    )
+            );
+
+            mockMvc.perform(get("/api/v1/lost-pets/" + lostPetId + "/match?sessionId=" + expiredSession.getId())
+                            .header("Authorization", "Bearer " + ownerToken))
+                    .andExpect(status().isGone())
+                    .andExpect(jsonPath("$.errorCode").value("L410_SEARCH_SESSION_EXPIRED"));
+        }
+
+        @Test
+        @DisplayName("세션에 없는 후보 승인 요청 시 409를 반환한다")
+        void approveInvalidSessionCandidate() throws Exception {
+            Long ownerId = 10L;
+            Long finderId = 22L;
+            String ownerToken = jwtTokenProvider.generateAccessToken(ownerId);
+            String finderToken = jwtTokenProvider.generateAccessToken(finderId);
+            long lostPetId = createLostPet(ownerToken);
+            long sightingId = createSighting(finderToken);
+
+            LostPetReport report = lostPetReportRepository.findById(lostPetId).orElseThrow();
+            LostPetSearchSession session = lostPetSearchSessionRepository.save(
+                    LostPetSearchSession.create(
+                            ownerId,
+                            report,
+                            "LOST",
+                            "https://cdn/query.jpg",
+                            null,
+                            LocalDateTime.now().plusHours(24)
+                    )
+            );
+
+            String approveRequest = """
+                    {
+                      "sessionId": %d,
+                      "sightingId": %d
+                    }
+                    """.formatted(session.getId(), sightingId);
+
+            mockMvc.perform(post("/api/v1/lost-pets/" + lostPetId + "/match")
+                            .with(csrf())
+                            .header("Authorization", "Bearer " + ownerToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(approveRequest))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.errorCode").value("L409_SEARCH_CANDIDATE_INVALID"));
+        }
+    }
+
+    private long createLostPet(String token) throws Exception {
+        String createRequest = """
+                {
+                  "petName": "Momo",
+                  "breed": "Poodle",
+                  "photoUrl": "https://cdn/momo.jpg",
+                  "description": "desc",
+                  "lastSeenAt": "2026-02-26T10:00:00",
+                  "lastSeenLocation": "Gangnam"
+                }
+                """;
+        MvcResult result = mockMvc.perform(post("/api/v1/lost-pets")
+                        .with(csrf())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createRequest))
+                .andExpect(status().isOk())
+                .andReturn();
+        return extractLongDataField(result, "lostPetId");
+    }
+
+    private long createSighting(String token) throws Exception {
+        String request = """
+                {
+                  "photoUrl": "https://cdn/sightings/1.jpg",
+                  "foundAt": "2026-02-26T11:10:00",
+                  "foundLocation": "Yeoksam",
+                  "memo": "brown collar"
+                }
+                """;
+        MvcResult result = mockMvc.perform(post("/api/v1/sightings")
+                        .with(csrf())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andReturn();
+        return extractLongDataField(result, "sightingId");
+    }
+
+    private Long extractLongDataField(MvcResult result, String fieldName) throws Exception {
+        JsonNode node = objectMapper.readTree(result.getResponse().getContentAsString());
+        return node.path("data").path(fieldName).asLong();
     }
 }

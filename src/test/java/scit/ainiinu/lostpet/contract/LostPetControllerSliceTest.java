@@ -19,11 +19,11 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.SliceImpl;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import scit.ainiinu.common.security.annotation.CurrentMember;
 import scit.ainiinu.common.security.interceptor.JwtAuthInterceptor;
@@ -168,14 +168,16 @@ class LostPetControllerSliceTest {
         @DisplayName("AI 분석 실패 fallback도 200 + 빈 결과를 반환한다")
         void analyzeFallbackWithHttp200() throws Exception {
             LostPetAnalyzeResponse response = LostPetAnalyzeResponse.builder()
+                    .sessionId(11L)
                     .summary("fallback")
                     .fallback(true)
                     .candidates(List.of())
                     .build();
-            given(lostPetAnalyzeService.analyze(any(LostPetAnalyzeRequest.class))).willReturn(response);
+            given(lostPetAnalyzeService.analyze(anyLong(), any(LostPetAnalyzeRequest.class))).willReturn(response);
 
             String request = """
                     {
+                      "lostPetId": 1,
                       "imageUrl": "https://cdn/pets/unknown.jpg",
                       "mode": "LOST"
                     }
@@ -187,6 +189,7 @@ class LostPetControllerSliceTest {
                             .content(request))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.sessionId").value(11L))
                     .andExpect(jsonPath("$.data.fallback").value(true))
                     .andExpect(jsonPath("$.data.candidates").isArray());
         }
@@ -196,21 +199,27 @@ class LostPetControllerSliceTest {
         @DisplayName("매치 후보 조회가 성공한다")
         void matchCandidates() throws Exception {
             LostPetMatchCandidateResponse candidate = LostPetMatchCandidateResponse.builder()
+                    .sessionId(11L)
                     .sightingId(2L)
                     .finderId(22L)
-                    .similarityTotal(new BigDecimal("0.91"))
-                    .status("PENDING_APPROVAL")
+                    .scoreSimilarity(new BigDecimal("0.91000"))
+                    .scoreDistance(new BigDecimal("0.60000"))
+                    .scoreRecency(new BigDecimal("0.70000"))
+                    .scoreTotal(new BigDecimal("0.84700"))
+                    .rank(1)
+                    .status("CANDIDATE")
                     .build();
             SliceImpl<LostPetMatchCandidateResponse> slice = new SliceImpl<>(
                     List.of(candidate),
                     PageRequest.of(0, 20),
                     false
             );
-            given(lostPetMatchQueryService.findCandidates(anyLong(), any())).willReturn(slice);
+            given(lostPetMatchQueryService.findCandidates(anyLong(), anyLong(), any(), any())).willReturn(slice);
 
             mockMvc.perform(get("/api/v1/lost-pets/1/match"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.content[0].sessionId").value(11L))
                     .andExpect(jsonPath("$.data.content[0].sightingId").value(2L));
         }
 
@@ -223,9 +232,30 @@ class LostPetControllerSliceTest {
                     .status("CHAT_LINKED")
                     .chatRoomId(101L)
                     .build();
-            given(lostPetMatchApprovalService.approve(anyLong(), anyLong(), any(LostPetMatchApproveRequest.class)))
+            given(lostPetMatchApprovalService.approve(anyLong(), anyLong(), any(LostPetMatchApproveRequest.class), any()))
                     .willReturn(response);
 
+            String request = """
+                    {
+                      "sessionId": 11,
+                      "sightingId": 2
+                    }
+                    """;
+
+            mockMvc.perform(post("/api/v1/lost-pets/1/match")
+                            .with(csrf())
+                            .header("Authorization", "Bearer test-token")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(request))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.chatRoomId").value(101L));
+        }
+
+        @Test
+        @WithMockUser
+        @DisplayName("매치 승인 요청에 sessionId가 없으면 400을 반환한다")
+        void approveMatchWithoutSessionId() throws Exception {
             String request = """
                     {
                       "sightingId": 2
@@ -234,11 +264,11 @@ class LostPetControllerSliceTest {
 
             mockMvc.perform(post("/api/v1/lost-pets/1/match")
                             .with(csrf())
+                            .header("Authorization", "Bearer test-token")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(request))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data.chatRoomId").value(101L));
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errorCode").value("C002"));
         }
     }
 }
