@@ -84,7 +84,7 @@ cd aini-inu-backend
 
 ## 6) 프론트 로컬 연동 설정
 
-`aini-inu-frontend/.env.local` 파일을 생성하고 아래 값을 넣습니다.
+프론트엔드 프로젝트 루트의 `.env.local` 파일을 생성하고 아래 값을 넣습니다.
 
 ```env
 NEXT_PUBLIC_ENABLE_MSW=false
@@ -92,10 +92,9 @@ NEXT_PUBLIC_API_PROXY_TARGET=http://localhost:8080
 NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
 ```
 
-프론트 실행:
+프론트 실행(프론트 프로젝트 루트에서):
 
 ```bash
-cd aini-inu-frontend
 npm run dev
 ```
 
