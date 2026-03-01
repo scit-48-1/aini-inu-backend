@@ -9,12 +9,12 @@
 ## 1) 사전 준비
 
 - Docker Desktop(또는 Docker Engine + Compose)
-- Node.js / npm
+- Node.js / npm (프론트 프로젝트에서 이미 사용중일 것)
 
 ## 2) 시크릿 파일 전달 방식
 
 `aini-inu-backend/.env.docker` 파일은 팀에서 별도로 전달받아야 합니다.
-전달은 1Password, Bitwarden, 사내 시크릿 저장소, 보안 메신저 같은 안전한 경로를 사용합니다.
+전달은 메신저 같은 안전한 경로를 사용합니다.
 
 `.env.docker`는 절대 Git에 커밋하지 않습니다.
 
@@ -31,9 +31,9 @@ cp .env.docker.example .env.docker
 
 필수:
 - `JWT_SECRET`
+- `GEMINI_API_KEY`
 
 선택(기능 사용 여부에 따라 설정):
-- `GEMINI_API_KEY`
 - `GEMINI_EMBEDDING_MODEL`
 - `LOSTPET_CHAT_BASE_URL`
 - `LOSTPET_CHAT_DIRECT_CREATE_PATH`
