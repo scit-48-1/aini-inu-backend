@@ -1,10 +1,15 @@
-# 프론트엔드 개발 온보딩 가이드 (백엔드 Docker 전용)
+# 프론트엔드 개발 온보딩 가이드 (백엔드 실행 방식 정리)
 
 ## 0) 팀 운영 원칙
 
-- 프론트 개발 시 백엔드 로컬 실행은 **Docker만 사용**합니다.
-- 로컬 PostgreSQL 실행 + `./gradlew bootRun` 방식은 사용하지 않습니다.
-- 실제 시크릿 값은 `.env.docker` 파일로만 관리하며, 절대 커밋하지 않습니다.
+- 기본 권장 실행 방식은 **Docker**입니다.
+- 필요 시 예외적으로 `./gradlew bootRun`으로도 실행할 수 있습니다.
+- 실제 시크릿 값은 `.env.docker` 또는 `.env`로만 관리하며, 절대 커밋하지 않습니다.
+
+## 실행 방식별 env 파일 규칙
+
+- Docker 실행: `.env.docker.example`를 복사해 `.env.docker`를 사용
+- 비Docker 실행(`./gradlew bootRun`): `.env.example`를 복사해 `.env`를 사용
 
 ## 1) 사전 준비
 
