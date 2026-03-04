@@ -7,7 +7,6 @@ import lombok.Builder;
 public record LostPetAnalyzeResponse(
         Long sessionId,
         String summary,
-        boolean fallback,
         List<LostPetAnalyzeCandidateResponse> candidates
 ) {
 }

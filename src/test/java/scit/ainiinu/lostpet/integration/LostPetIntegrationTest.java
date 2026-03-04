@@ -2,6 +2,7 @@ package scit.ainiinu.lostpet.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -291,13 +292,14 @@ class LostPetIntegrationTest {
         }
 
         @Test
-        @DisplayName("AI 예외 발생 시에도 200 + fallback 응답을 반환한다")
-        void analyzeFallbackResponse() throws Exception {
+        @DisplayName("AI 예외 발생 시 500을 반환하고 세션을 생성하지 않는다")
+        void analyzeFailWithoutSessionCreation() throws Exception {
             Long ownerId = 10L;
             String ownerToken = jwtTokenProvider.generateAccessToken(ownerId);
             long lostPetId = createLostPet(ownerToken);
 
             given(lostPetAiClient.analyze(any())).willThrow(new RuntimeException("timeout"));
+            long sessionCountBefore = lostPetSearchSessionRepository.count();
 
             String analyzeRequest = """
                     {
@@ -312,10 +314,9 @@ class LostPetIntegrationTest {
                             .header("Authorization", "Bearer " + ownerToken)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(analyzeRequest))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.sessionId").exists())
-                    .andExpect(jsonPath("$.data.fallback").value(true))
-                    .andExpect(jsonPath("$.data.candidates").isArray());
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(jsonPath("$.errorCode").value("L500_AI_ANALYZE_FAILED"));
+            assertThat(lostPetSearchSessionRepository.count()).isEqualTo(sessionCountBefore);
         }
 
         @Test
@@ -350,7 +351,6 @@ class LostPetIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(analyzeRequest))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.fallback").value(false))
                     .andExpect(jsonPath("$.data.summary").value("ok"))
                     .andExpect(jsonPath("$.data.candidates[0].sightingId").value(sightingId))
                     .andReturn();

@@ -54,6 +54,11 @@ public class LostPetAnalyzeService {
             throw new LostPetException(LostPetErrorCode.L403_FORBIDDEN);
         }
 
+        LostPetAiResult result = analyzeWithAiOrThrow(request, report, startedAt);
+        List<LostPetAiCandidate> aiCandidates = result.candidates() == null
+                ? List.of()
+                : result.candidates();
+
         LostPetSearchSession session = lostPetSearchSessionRepository.save(
                 LostPetSearchSession.create(
                         memberId,
@@ -65,85 +70,79 @@ public class LostPetAnalyzeService {
                 )
         );
 
+        List<ScoredCandidate> scoredCandidates = aiCandidates.stream()
+                .map(aiCandidate -> toScoredCandidate(report, aiCandidate))
+                .flatMap(List::stream)
+                .sorted(Comparator.comparing(ScoredCandidate::getScoreTotal).reversed()
+                        .thenComparing(scoredCandidate -> scoredCandidate.getSighting().getId()))
+                .limit(topN)
+                .toList();
+
+        int rankOrder = 1;
+        List<LostPetSearchCandidate> entities = new java.util.ArrayList<>(scoredCandidates.size());
+        for (ScoredCandidate scoredCandidate : scoredCandidates) {
+            entities.add(LostPetSearchCandidate.create(
+                    session,
+                    scoredCandidate.getSighting(),
+                    scoredCandidate.getScoreSimilarity(),
+                    scoredCandidate.getScoreDistance(),
+                    scoredCandidate.getScoreRecency(),
+                    scoredCandidate.getScoreTotal(),
+                    rankOrder++
+            ));
+        }
+
+        List<LostPetSearchCandidate> savedCandidates = entities.isEmpty()
+                ? List.of()
+                : lostPetSearchCandidateRepository.saveAll(entities);
+
+        List<LostPetAnalyzeCandidateResponse> candidates = savedCandidates.stream()
+                .map(this::toCandidateResponse)
+                .toList();
+        log.info(
+                "lostpet.analyze success mode={} lostPetId={} sessionId={} candidateCount={} elapsedMs={}",
+                request.resolveMode(),
+                report.getId(),
+                session.getId(),
+                candidates.size(),
+                System.currentTimeMillis() - startedAt
+        );
+        return LostPetAnalyzeResponse.builder()
+                .sessionId(session.getId())
+                .summary(result.summary() == null ? "" : result.summary())
+                .candidates(candidates)
+                .build();
+    }
+
+    private LostPetAiResult analyzeWithAiOrThrow(
+            LostPetAnalyzeRequest request,
+            LostPetReport report,
+            long startedAt
+    ) {
         try {
             LostPetAiResult result = lostPetAiClient.analyze(request.normalizeForAi());
             if (result == null) {
                 log.warn(
-                        "lostpet.analyze result-null mode={} lostPetId={} sessionId={} elapsedMs={}",
+                        "lostpet.analyze failed mode={} lostPetId={} elapsedMs={} reason=result-null",
                         request.resolveMode(),
                         report.getId(),
-                        session.getId(),
                         System.currentTimeMillis() - startedAt
                 );
-                return fallbackResponse(session.getId());
+                throw new LostPetException(LostPetErrorCode.L500_AI_ANALYZE_FAILED);
             }
-            List<LostPetAiCandidate> aiCandidates = result.candidates() == null
-                    ? List.of()
-                    : result.candidates();
-
-            List<ScoredCandidate> scoredCandidates = aiCandidates.stream()
-                    .map(aiCandidate -> toScoredCandidate(report, aiCandidate))
-                    .flatMap(List::stream)
-                    .sorted(Comparator.comparing(ScoredCandidate::getScoreTotal).reversed()
-                            .thenComparing(scoredCandidate -> scoredCandidate.getSighting().getId()))
-                    .limit(topN)
-                    .toList();
-
-            int rankOrder = 1;
-            List<LostPetSearchCandidate> entities = new java.util.ArrayList<>(scoredCandidates.size());
-            for (ScoredCandidate scoredCandidate : scoredCandidates) {
-                entities.add(LostPetSearchCandidate.create(
-                        session,
-                        scoredCandidate.getSighting(),
-                        scoredCandidate.getScoreSimilarity(),
-                        scoredCandidate.getScoreDistance(),
-                        scoredCandidate.getScoreRecency(),
-                        scoredCandidate.getScoreTotal(),
-                        rankOrder++
-                ));
-            }
-
-            List<LostPetSearchCandidate> savedCandidates = entities.isEmpty()
-                    ? List.of()
-                    : lostPetSearchCandidateRepository.saveAll(entities);
-
-            List<LostPetAnalyzeCandidateResponse> candidates = savedCandidates.stream()
-                    .map(this::toCandidateResponse)
-                    .toList();
-            log.info(
-                    "lostpet.analyze success mode={} lostPetId={} sessionId={} candidateCount={} elapsedMs={}",
-                    request.resolveMode(),
-                    report.getId(),
-                    session.getId(),
-                    candidates.size(),
-                    System.currentTimeMillis() - startedAt
-            );
-            return LostPetAnalyzeResponse.builder()
-                    .sessionId(session.getId())
-                    .summary(result.summary() == null ? "" : result.summary())
-                    .fallback(false)
-                    .candidates(candidates)
-                    .build();
+            return result;
+        } catch (LostPetException exception) {
+            throw exception;
         } catch (Exception exception) {
             log.warn(
-                    "lostpet.analyze fallback mode={} lostPetId={} sessionId={} elapsedMs={} reason={}",
+                    "lostpet.analyze failed mode={} lostPetId={} elapsedMs={} reason={}",
                     request.resolveMode(),
                     report.getId(),
-                    session.getId(),
                     System.currentTimeMillis() - startedAt,
                     exception.getClass().getSimpleName()
             );
-            return fallbackResponse(session.getId());
+            throw new LostPetException(LostPetErrorCode.L500_AI_ANALYZE_FAILED);
         }
-    }
-
-    private LostPetAnalyzeResponse fallbackResponse(Long sessionId) {
-        return LostPetAnalyzeResponse.builder()
-                .sessionId(sessionId)
-                .summary("manual_ready")
-                .fallback(true)
-                .candidates(List.of())
-                .build();
     }
 
     private List<ScoredCandidate> toScoredCandidate(LostPetReport report, LostPetAiCandidate aiCandidate) {

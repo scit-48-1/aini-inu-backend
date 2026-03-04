@@ -30,7 +30,6 @@ import scit.ainiinu.common.security.interceptor.JwtAuthInterceptor;
 import scit.ainiinu.common.security.resolver.CurrentMemberArgumentResolver;
 import scit.ainiinu.lostpet.controller.LostPetController;
 import scit.ainiinu.lostpet.dto.LostPetAnalyzeRequest;
-import scit.ainiinu.lostpet.dto.LostPetAnalyzeResponse;
 import scit.ainiinu.lostpet.dto.LostPetCreateRequest;
 import scit.ainiinu.lostpet.dto.LostPetDetailResponse;
 import scit.ainiinu.lostpet.dto.LostPetMatchApproveRequest;
@@ -38,6 +37,8 @@ import scit.ainiinu.lostpet.dto.LostPetMatchCandidateResponse;
 import scit.ainiinu.lostpet.dto.LostPetMatchResponse;
 import scit.ainiinu.lostpet.dto.LostPetResponse;
 import scit.ainiinu.lostpet.dto.LostPetSummaryResponse;
+import scit.ainiinu.lostpet.error.LostPetErrorCode;
+import scit.ainiinu.lostpet.error.LostPetException;
 import scit.ainiinu.lostpet.service.LostPetAnalyzeService;
 import scit.ainiinu.lostpet.service.LostPetMatchApprovalService;
 import scit.ainiinu.lostpet.service.LostPetMatchQueryService;
@@ -165,15 +166,10 @@ class LostPetControllerSliceTest {
 
         @Test
         @WithMockUser
-        @DisplayName("AI 분석 실패 fallback도 200 + 빈 결과를 반환한다")
-        void analyzeFallbackWithHttp200() throws Exception {
-            LostPetAnalyzeResponse response = LostPetAnalyzeResponse.builder()
-                    .sessionId(11L)
-                    .summary("fallback")
-                    .fallback(true)
-                    .candidates(List.of())
-                    .build();
-            given(lostPetAnalyzeService.analyze(anyLong(), any(LostPetAnalyzeRequest.class))).willReturn(response);
+        @DisplayName("AI 분석 실패 시 500 도메인 에러를 반환한다")
+        void analyzeFailWithHttp500() throws Exception {
+            given(lostPetAnalyzeService.analyze(anyLong(), any(LostPetAnalyzeRequest.class)))
+                    .willThrow(new LostPetException(LostPetErrorCode.L500_AI_ANALYZE_FAILED));
 
             String request = """
                     {
@@ -187,11 +183,8 @@ class LostPetControllerSliceTest {
                             .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(request))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data.sessionId").value(11L))
-                    .andExpect(jsonPath("$.data.fallback").value(true))
-                    .andExpect(jsonPath("$.data.candidates").isArray());
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(jsonPath("$.errorCode").value("L500_AI_ANALYZE_FAILED"));
         }
 
         @Test

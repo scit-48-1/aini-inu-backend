@@ -18,7 +18,8 @@ public enum LostPetErrorCode implements ErrorCode {
     L409_MATCH_CONFLICT("L409_MATCH_CONFLICT", HttpStatus.CONFLICT, "현재 매치 상태에서는 승인할 수 없습니다."),
     L409_SEARCH_CANDIDATE_INVALID("L409_SEARCH_CANDIDATE_INVALID", HttpStatus.CONFLICT, "탐색 세션에 없는 후보입니다."),
     L410_REPORT_RESOLVED("L410_REPORT_RESOLVED", HttpStatus.GONE, "해결된 실종 신고입니다."),
-    L410_SEARCH_SESSION_EXPIRED("L410_SEARCH_SESSION_EXPIRED", HttpStatus.GONE, "탐색 세션이 만료되었습니다.");
+    L410_SEARCH_SESSION_EXPIRED("L410_SEARCH_SESSION_EXPIRED", HttpStatus.GONE, "탐색 세션이 만료되었습니다."),
+    L500_AI_ANALYZE_FAILED("L500_AI_ANALYZE_FAILED", HttpStatus.INTERNAL_SERVER_ERROR, "AI 분석에 실패했습니다.");
 
     private final String code;
     private final HttpStatus httpStatus;
