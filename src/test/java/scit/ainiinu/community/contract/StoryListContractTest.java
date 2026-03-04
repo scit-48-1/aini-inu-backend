@@ -15,9 +15,11 @@ import scit.ainiinu.common.security.annotation.CurrentMember;
 import scit.ainiinu.common.security.interceptor.JwtAuthInterceptor;
 import scit.ainiinu.common.security.resolver.CurrentMemberArgumentResolver;
 import scit.ainiinu.community.controller.StoryController;
-import scit.ainiinu.community.dto.StoryResponse;
+import scit.ainiinu.community.dto.StoryDiaryItemResponse;
+import scit.ainiinu.community.dto.StoryGroupResponse;
 import scit.ainiinu.community.service.StoryService;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -57,17 +59,26 @@ class StoryListContractTest {
     @WithMockUser
     @DisplayName("스토리 목록 조회는 SliceResponse 계약을 반환한다")
     void getStoriesSliceContract() throws Exception {
-        StoryResponse story = StoryResponse.builder()
-                .id(11L)
-                .memberId(7L)
-                .nickname("몽이아빠")
-                .profileImageUrl("https://cdn.example.com/profile.jpg")
-                .coverImageUrl("https://cdn.example.com/story.jpg")
+        StoryDiaryItemResponse diaryItem = StoryDiaryItemResponse.builder()
+                .diaryId(101L)
+                .title("아침 산책")
+                .content("강아지랑 공원 산책")
+                .photoUrls(List.of("https://cdn.example.com/diary-1.jpg"))
+                .walkDate(LocalDate.now())
                 .createdAt(OffsetDateTime.now())
                 .build();
 
-        SliceResponse<StoryResponse> response = SliceResponse.of(
-                new SliceImpl<>(List.of(story), PageRequest.of(0, 20), false)
+        StoryGroupResponse storyGroup = StoryGroupResponse.builder()
+                .memberId(7L)
+                .nickname("몽이아빠")
+                .profileImageUrl("https://cdn.example.com/profile.jpg")
+                .coverImageUrl("https://cdn.example.com/diary-1.jpg")
+                .latestCreatedAt(OffsetDateTime.now())
+                .diaries(List.of(diaryItem))
+                .build();
+
+        SliceResponse<StoryGroupResponse> response = SliceResponse.of(
+                new SliceImpl<>(List.of(storyGroup), PageRequest.of(0, 20), false)
         );
 
         given(storyService.getStories(anyLong(), any())).willReturn(response);
@@ -77,7 +88,8 @@ class StoryListContractTest {
                         .param("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.content[0].id").value(11))
+                .andExpect(jsonPath("$.data.content[0].memberId").value(7))
+                .andExpect(jsonPath("$.data.content[0].diaries[0].diaryId").value(101))
                 .andExpect(jsonPath("$.data.pageNumber").value(0))
                 .andExpect(jsonPath("$.data.pageSize").value(20));
     }
