@@ -28,7 +28,6 @@ public class Post extends BaseTimeEntity {
     @Column(nullable = false, length = 2000)
     private String content;
 
-    // TODO: 나머지 필드(이미지 URL 등)를 추가해보세요.
     @ElementCollection
     @CollectionTable(name = "post_image_url", joinColumns = @JoinColumn(name = "post_id"))
     @Column(name = "image_url")
@@ -43,8 +42,6 @@ public class Post extends BaseTimeEntity {
     //동시성처리방향
     @Version
     private Long version;
-
-    // TODO: 비즈니스 로직(수정 등)을 위한 메서드를 추가해보세요. (Setter 사용 금지!)
 
     public static Post create(Long authorId, String content, List<String> imageUrls) {
         Post post = new Post();

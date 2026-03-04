@@ -22,5 +22,4 @@ public class Breed extends BaseTimeEntity {
     @Column(nullable = false, length = 10)
     private PetSize size;
     
-    // TODO: 필요한 필드가 있다면 추가하세요.
 }
