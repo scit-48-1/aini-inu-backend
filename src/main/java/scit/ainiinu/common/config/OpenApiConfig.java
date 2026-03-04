@@ -49,7 +49,7 @@ public class OpenApiConfig {
         return GroupedOpenApi.builder()
                 .group("v1")
                 .pathsToMatch("/api/v1/**")
-                .pathsToExclude("/api/v1/test/**")
+                .pathsToExclude("/api/v1/test/auth/me")
                 .build();
     }
 

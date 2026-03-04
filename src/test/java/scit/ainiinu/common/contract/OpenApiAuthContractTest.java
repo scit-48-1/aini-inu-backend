@@ -50,8 +50,8 @@ class OpenApiAuthContractTest {
 
         assertThat(paths.isObject()).isTrue();
 
-        // 테스트 전용 API는 문서 계약에서 제외되어야 한다.
-        assertThat(paths.has("/api/v1/test/auth/token")).isFalse();
+        // 테스트 토큰 API는 문서 계약에 노출되어야 한다.
+        assertThat(paths.has("/api/v1/test/auth/token")).isTrue();
         assertThat(paths.has("/api/v1/test/auth/me")).isFalse();
 
         // @Public 엔드포인트는 operation-level security가 빈 배열이어야 한다.
@@ -110,7 +110,8 @@ class OpenApiAuthContractTest {
 
                     if ("memberId".equals(name)) {
                         boolean isWalkDiaryList = "/api/v1/walk-diaries".equals(path) && "get".equals(method);
-                        if (!isWalkDiaryList) {
+                        boolean isTestTokenEndpoint = "/api/v1/test/auth/token".equals(path) && "post".equals(method);
+                        if (!isWalkDiaryList && !isTestTokenEndpoint) {
                             violations.add(method.toUpperCase() + " " + path + " has forbidden query parameter: memberId");
                             continue;
                         }
