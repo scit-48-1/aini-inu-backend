@@ -64,6 +64,8 @@ class OpenApiRequestSchemaContractTest {
         assertMinLength(schemas, "CommentCreateRequest", "content", 1);
         assertMinLength(schemas, "WalkDiaryCreateRequest", "title", 1);
         assertMinLength(schemas, "WalkDiaryCreateRequest", "content", 1);
+        assertMaxLength(schemas, "WalkDiaryCreateRequest", "content", 300);
+        assertMaxLength(schemas, "WalkDiaryPatchRequest", "content", 300);
 
         // Optional request body endpoint should not be forced required at schema level.
         assertNotRequired(schemas, "WalkConfirmRequest", "action");
@@ -92,6 +94,16 @@ class OpenApiRequestSchemaContractTest {
                 .isTrue();
         assertThat(fieldSchema.path("minLength").asInt(-1))
                 .as("minLength mismatch: %s.%s", schemaName, fieldName)
+                .isEqualTo(expected);
+    }
+
+    private void assertMaxLength(JsonNode schemas, String schemaName, String fieldName, int expected) {
+        JsonNode fieldSchema = schema(schemas, schemaName).path("properties").path(fieldName);
+        assertThat(fieldSchema.isObject())
+                .as("field schema missing: %s.%s", schemaName, fieldName)
+                .isTrue();
+        assertThat(fieldSchema.path("maxLength").asInt(-1))
+                .as("maxLength mismatch: %s.%s", schemaName, fieldName)
                 .isEqualTo(expected);
     }
 

@@ -91,6 +91,21 @@ class WalkDiaryServiceCrudTest {
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", WalkDiaryErrorCode.IMAGE_COUNT_EXCEEDED);
         }
+
+        @Test
+        @DisplayName("본문이 300자를 초과하면 생성할 수 없다")
+        void createDiary_contentTooLong_fail() {
+            WalkDiaryCreateRequest request = new WalkDiaryCreateRequest();
+            request.setTitle("한강 산책 일기");
+            request.setContent("a".repeat(301));
+            request.setWalkDate(LocalDate.now());
+            request.setPhotoUrls(List.of());
+            request.setIsPublic(true);
+
+            assertThatThrownBy(() -> walkDiaryService.createDiary(1L, request))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", WalkDiaryErrorCode.INVALID_REQUEST);
+        }
     }
 
     @Nested
@@ -147,6 +162,22 @@ class WalkDiaryServiceCrudTest {
             assertThatThrownBy(() -> walkDiaryService.updateDiary(1L, 1L, request))
                     .isInstanceOf(BusinessException.class)
                     .hasFieldOrPropertyWithValue("errorCode", WalkDiaryErrorCode.THREAD_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("본문이 300자를 초과하면 수정할 수 없다")
+        void updateDiary_contentTooLong_fail() {
+            WalkDiary diary = WalkDiary.create(1L, null, "제목", "내용", List.of(), LocalDate.now(), true);
+            ReflectionTestUtils.setField(diary, "id", 1L);
+
+            WalkDiaryPatchRequest request = new WalkDiaryPatchRequest();
+            request.setContent("a".repeat(301));
+
+            given(walkDiaryRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(diary));
+
+            assertThatThrownBy(() -> walkDiaryService.updateDiary(1L, 1L, request))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", WalkDiaryErrorCode.INVALID_REQUEST);
         }
     }
 

@@ -18,7 +18,7 @@ public class StoryDiaryItemResponse {
     @Schema(description = "산책일기 제목", example = "아침 산책")
     private String title;
 
-    @Schema(description = "산책일기 본문", example = "강아지랑 공원 산책")
+    @Schema(description = "산책일기 본문", example = "강아지랑 공원 산책", maxLength = 300)
     private String content;
 
     @Schema(description = "산책일기 사진 URL 목록", example = "[\"https://cdn.example.com/diary-1.jpg\"]")

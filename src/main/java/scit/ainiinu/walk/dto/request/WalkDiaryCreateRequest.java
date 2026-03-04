@@ -23,9 +23,9 @@ public class WalkDiaryCreateRequest {
     @Size(min = 1, max = 120)
     private String title;
 
-    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minLength = 1)
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minLength = 1, maxLength = 300)
     @NotBlank
-    @Size(min = 1, max = 2000)
+    @Size(min = 1, max = 300)
     private String content;
 
     @Size(max = 5)

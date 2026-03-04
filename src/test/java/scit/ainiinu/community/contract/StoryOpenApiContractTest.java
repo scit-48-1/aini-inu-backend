@@ -29,6 +29,8 @@ class StoryOpenApiContractTest {
                 .andExpect(jsonPath("$.components.schemas.StoryGroupResponse.properties.memberId").exists())
                 .andExpect(jsonPath("$.components.schemas.StoryGroupResponse.properties.diaries").exists())
                 .andExpect(jsonPath("$.components.schemas.StoryDiaryItemResponse.properties.diaryId").exists())
-                .andExpect(jsonPath("$.components.schemas.StoryDiaryItemResponse.properties.createdAt").exists());
+                .andExpect(jsonPath("$.components.schemas.StoryDiaryItemResponse.properties.createdAt").exists())
+                .andExpect(jsonPath("$.components.schemas.StoryDiaryItemResponse.properties.content.maxLength").value(300))
+                .andExpect(jsonPath("$.components.schemas.WalkDiaryResponse.properties.content.maxLength").value(300));
     }
 }

@@ -18,7 +18,7 @@ public class WalkDiaryPatchRequest {
     @Size(max = 120)
     private String title;
 
-    @Size(max = 2000)
+    @Size(max = 300)
     private String content;
 
     @Size(max = 5)

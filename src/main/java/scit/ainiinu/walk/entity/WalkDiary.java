@@ -31,6 +31,7 @@ import java.util.List;
 public class WalkDiary extends BaseTimeEntity {
 
     private static final int MAX_IMAGE_COUNT = 5;
+    private static final int CONTENT_MAX_LENGTH = 300;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,7 +46,7 @@ public class WalkDiary extends BaseTimeEntity {
     @Column(nullable = false, length = 120)
     private String title;
 
-    @Column(nullable = false, length = 2000)
+    @Column(nullable = false, length = CONTENT_MAX_LENGTH)
     private String content;
 
     @ElementCollection(fetch = FetchType.LAZY)
@@ -104,7 +105,7 @@ public class WalkDiary extends BaseTimeEntity {
             this.title = title;
         }
         if (content != null) {
-            if (content.isBlank()) {
+            if (content.isBlank() || content.length() > CONTENT_MAX_LENGTH) {
                 throw new BusinessException(WalkDiaryErrorCode.INVALID_REQUEST);
             }
             this.content = content;
@@ -140,7 +141,12 @@ public class WalkDiary extends BaseTimeEntity {
     }
 
     private void validate(String title, String content, LocalDate walkDate, List<String> photoUrls) {
-        if (title == null || title.isBlank() || content == null || content.isBlank() || walkDate == null) {
+        if (title == null
+                || title.isBlank()
+                || content == null
+                || content.isBlank()
+                || content.length() > CONTENT_MAX_LENGTH
+                || walkDate == null) {
             throw new BusinessException(WalkDiaryErrorCode.INVALID_REQUEST);
         }
         if (photoUrls != null && photoUrls.size() > MAX_IMAGE_COUNT) {

@@ -1,6 +1,7 @@
 package scit.ainiinu.walk.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 import scit.ainiinu.walk.entity.WalkDiary;
@@ -17,6 +18,7 @@ public class WalkDiaryResponse {
     private Long memberId;
     private Long threadId;
     private String title;
+    @Schema(maxLength = 300)
     private String content;
     private List<String> photoUrls;
     private LocalDate walkDate;

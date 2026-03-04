@@ -112,6 +112,25 @@ class WalkDiaryControllerTest {
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data.id").value(1L));
         }
+
+        @Test
+        @WithMockUser
+        @DisplayName("실패: 본문이 300자를 초과하면 400을 반환한다")
+        void createDiary_contentTooLong_fail() throws Exception {
+            WalkDiaryCreateRequest request = new WalkDiaryCreateRequest();
+            request.setTitle("한강 산책 일기");
+            request.setContent("a".repeat(301));
+            request.setWalkDate(LocalDate.now());
+            request.setPhotoUrls(List.of("https://cdn/1.jpg"));
+            request.setIsPublic(true);
+
+            mockMvc.perform(post("/api/v1/walk-diaries")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errorCode").value("C002"));
+        }
     }
 
     @Nested
@@ -196,6 +215,22 @@ class WalkDiaryControllerTest {
                     .andDo(print())
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.errorCode").value("WD403_DIARY_OWNER_ONLY"));
+        }
+
+        @Test
+        @WithMockUser
+        @DisplayName("실패: 본문이 300자를 초과하면 400을 반환한다")
+        void patch_contentTooLong_fail() throws Exception {
+            Long diaryId = 1L;
+            WalkDiaryPatchRequest request = new WalkDiaryPatchRequest();
+            request.setContent("a".repeat(301));
+
+            mockMvc.perform(patch("/api/v1/walk-diaries/{diaryId}", diaryId)
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errorCode").value("C002"));
         }
     }
 

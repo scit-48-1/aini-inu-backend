@@ -116,4 +116,30 @@ class WalkDiaryCrudIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content.length()").value(0));
     }
+
+    @Test
+    @DisplayName("일기 본문이 300자를 초과하면 생성 요청은 400으로 거절된다")
+    void createDiary_contentTooLong_fail() throws Exception {
+        Member owner = memberRepository.save(Member.builder()
+                .email("diary-owner3@test.com")
+                .nickname("owner3")
+                .memberType(MemberType.PET_OWNER)
+                .build());
+        String ownerToken = jwtTokenProvider.generateAccessToken(owner.getId());
+
+        WalkDiaryCreateRequest request = new WalkDiaryCreateRequest();
+        request.setTitle("본문 길이 검증");
+        request.setContent("a".repeat(301));
+        request.setWalkDate(LocalDate.now());
+        request.setPhotoUrls(List.of());
+        request.setIsPublic(true);
+
+        mockMvc.perform(post("/api/v1/walk-diaries")
+                        .with(csrf())
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("C002"));
+    }
 }
