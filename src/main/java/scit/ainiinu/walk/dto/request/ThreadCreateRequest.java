@@ -1,5 +1,6 @@
 package scit.ainiinu.walk.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -20,12 +21,14 @@ import java.util.List;
 @NoArgsConstructor
 public class ThreadCreateRequest {
 
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minLength = 1)
     @NotBlank
-    @Size(max = 30)
+    @Size(min = 1, max = 30)
     private String title;
 
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minLength = 1)
     @NotBlank
-    @Size(max = 500)
+    @Size(min = 1, max = 500)
     private String description;
 
     @NotNull
@@ -36,6 +39,7 @@ public class ThreadCreateRequest {
 
     private LocalDateTime endTime;
 
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank
     private String chatType;
 
@@ -52,6 +56,7 @@ public class ThreadCreateRequest {
     @Valid
     private LocationRequest location;
 
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     @NotEmpty
     private List<Long> petIds;
 
@@ -62,6 +67,7 @@ public class ThreadCreateRequest {
     @Setter
     @NoArgsConstructor
     public static class LocationRequest {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank
         private String placeName;
 
@@ -78,6 +84,7 @@ public class ThreadCreateRequest {
     @Setter
     @NoArgsConstructor
     public static class ThreadFilterRequest {
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank
         private String type;
 

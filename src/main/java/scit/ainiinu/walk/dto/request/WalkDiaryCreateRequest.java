@@ -1,5 +1,6 @@
 package scit.ainiinu.walk.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -17,12 +18,14 @@ public class WalkDiaryCreateRequest {
 
     private Long threadId;
 
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minLength = 1)
     @NotBlank
-    @Size(max = 120)
+    @Size(min = 1, max = 120)
     private String title;
 
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minLength = 1)
     @NotBlank
-    @Size(max = 2000)
+    @Size(min = 1, max = 2000)
     private String content;
 
     @Size(max = 5)

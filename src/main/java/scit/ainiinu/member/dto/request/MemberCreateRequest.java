@@ -1,5 +1,6 @@
 package scit.ainiinu.member.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -17,6 +18,7 @@ import java.util.List;
 @NoArgsConstructor
 public class MemberCreateRequest {
 
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "닉네임은 필수입니다.")
     @Size(min = 2, max = 10, message = "닉네임은 2자 이상 10자 이하여야 합니다.")
     @Pattern(regexp = "^[가-힣a-zA-Z0-9]+$", message = "닉네임은 한글, 영문, 숫자만 사용할 수 있습니다.")

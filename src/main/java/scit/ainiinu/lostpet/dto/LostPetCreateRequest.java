@@ -1,5 +1,6 @@
 package scit.ainiinu.lostpet.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,11 +17,13 @@ import lombok.Setter;
 @AllArgsConstructor
 public class LostPetCreateRequest {
 
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank
     private String petName;
 
     private String breed;
 
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank
     private String photoUrl;
 
@@ -29,6 +32,7 @@ public class LostPetCreateRequest {
     @NotNull
     private LocalDateTime lastSeenAt;
 
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank
     private String lastSeenLocation;
 }

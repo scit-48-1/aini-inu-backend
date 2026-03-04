@@ -1,5 +1,6 @@
 package scit.ainiinu.pet.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -17,8 +18,9 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 public class PetCreateRequest {
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minLength = 1)
     @NotBlank(message = "이름은 필수입니다")
-    @Size(max = 10, message = "이름은 10자를 초과할 수 없습니다")
+    @Size(min = 1, max = 10, message = "이름은 10자를 초과할 수 없습니다")
     private String name;
 
     @NotNull(message = "견종 ID는 필수입니다")
