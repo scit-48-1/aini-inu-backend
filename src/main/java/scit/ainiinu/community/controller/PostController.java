@@ -69,11 +69,11 @@ public class PostController {
     @PatchMapping("/{postId}")
     @Operation(summary = "게시글 수정", description = "게시글 작성자가 내용을 수정합니다.")
     public ResponseEntity<ApiResponse<PostResponse>> updatePost(
-            @CurrentMember Long authorId,
+            @CurrentMember Long memberId,
             @PathVariable("postId") Long postId,
             @RequestBody @Valid PostUpdateRequest request
     ) {
-        PostResponse response = postService.updatePost(authorId, postId, request);
+        PostResponse response = postService.updatePost(memberId, postId, request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -81,10 +81,10 @@ public class PostController {
     @DeleteMapping("/{postId}")
     @Operation(summary = "게시글 삭제", description = "게시글 작성자가 게시글을 삭제합니다.")
     public ResponseEntity<ApiResponse<Void>> deletePost(
-            @CurrentMember Long authorId,
+            @CurrentMember Long memberId,
             @PathVariable("postId") Long postId
     ) {
-        postService.deletePost(authorId, postId);
+        postService.deletePost(memberId, postId);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
@@ -103,11 +103,11 @@ public class PostController {
     @PostMapping("/{postId}/comments")
     @Operation(summary = "댓글 작성", description = "게시글에 댓글을 작성합니다.")
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(
-            @CurrentMember Long authorId,
+            @CurrentMember Long memberId,
             @PathVariable("postId") Long postId,
             @RequestBody @Valid CommentCreateRequest request
     ) {
-        CommentResponse response = postService.createComment(authorId, postId, request);
+        CommentResponse response = postService.createComment(memberId, postId, request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -115,11 +115,11 @@ public class PostController {
     @DeleteMapping("/{postId}/comments/{commentId}")
     @Operation(summary = "댓글 삭제", description = "댓글 작성자 또는 게시글 작성자가 댓글을 삭제합니다.")
     public ResponseEntity<ApiResponse<Void>> deleteComment(
-            @CurrentMember Long authorId,
+            @CurrentMember Long memberId,
             @PathVariable("postId") Long postId,
             @PathVariable("commentId") Long commentId
     ) {
-        postService.deleteComment(authorId, postId, commentId);
+        postService.deleteComment(memberId, postId, commentId);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
@@ -127,10 +127,10 @@ public class PostController {
     @PostMapping
     @Operation(summary = "게시글 생성", description = "새 게시글을 생성합니다.")
     public ResponseEntity<ApiResponse<PostResponse>> create(
-            @CurrentMember Long authorId,
+            @CurrentMember Long memberId,
             @RequestBody @Valid PostCreateRequest request
     ){
-        PostResponse response = postService.create(authorId, request);
+        PostResponse response = postService.create(memberId, request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

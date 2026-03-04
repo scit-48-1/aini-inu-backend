@@ -26,6 +26,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/test/auth")
 @RequiredArgsConstructor
 @Public  // 인증 없이 접근 가능
+@Hidden
 @Tag(name = "Internal", description = "개발/테스트 보조 API")
 public class TestAuthController {
 

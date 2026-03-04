@@ -104,9 +104,9 @@ public class PostService {
      * 게시글 생성
      */
     @Transactional
-    public PostResponse create(Long authorId, PostCreateRequest request) {
+    public PostResponse create(Long memberId, PostCreateRequest request) {
         Post post = Post.create(
-                authorId,
+                memberId,
                 request.getResolvedContent(),
                 request.getImageUrls()
         );
@@ -119,21 +119,21 @@ public class PostService {
      * - 작성자 본인만 수정 가능합니다. (CO002)
      */
     @Transactional
-    public PostResponse updatePost(Long authorId, Long postId, PostUpdateRequest request) {
+    public PostResponse updatePost(Long memberId, Long postId, PostUpdateRequest request) {
         // 1. 게시글 조회
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(CommunityErrorCode.POST_NOT_FOUND));
 
         // 2. 작성자 본인 확인
-        if (!post.getAuthorId().equals(authorId)) {
+        if (!post.getAuthorId().equals(memberId)) {
             throw new BusinessException(CommunityErrorCode.NOT_POST_OWNER);
         }
 
         // 3. 내용 및 이미지 수정 (길이 검증 등은 Entity 내부에서 처리)
         post.update(request.getResolvedContent(), request.getImageUrls());
 
-        // 4. 좋아요 여부 조회 (수정한 사용자는 작성자이므로 authorId를 사용)
-        boolean isLiked = postLikeRepository.existsByPostAndMemberId(post, authorId);
+        // 4. 좋아요 여부 조회 (수정한 사용자는 작성자이므로 memberId를 사용)
+        boolean isLiked = postLikeRepository.existsByPostAndMemberId(post, memberId);
 
         return PostResponse.from(post, isLiked);
     }
@@ -143,13 +143,13 @@ public class PostService {
      * - 작성자 본인만 삭제 가능합니다. (CO002)
      */
     @Transactional
-    public void deletePost(Long authorId, Long postId) {
+    public void deletePost(Long memberId, Long postId) {
         // 1. 게시글 조회
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(CommunityErrorCode.POST_NOT_FOUND));
 
         // 2. 작성자 본인 확인
-        if (!post.getAuthorId().equals(authorId)) {
+        if (!post.getAuthorId().equals(memberId)) {
             throw new BusinessException(CommunityErrorCode.NOT_POST_OWNER);
         }
 
@@ -194,13 +194,13 @@ public class PostService {
      * - 내용은 최대 500자입니다. (CO005)
      */
     @Transactional
-    public CommentResponse createComment(Long authorId, Long postId, CommentCreateRequest request) {
+    public CommentResponse createComment(Long memberId, Long postId, CommentCreateRequest request) {
         // 1. 게시글 조회
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(CommunityErrorCode.POST_NOT_FOUND));
 
         // 2. 댓글 엔티티 생성 및 저장 (길이 검증은 Entity 내부에서 수행)
-        Comment comment = Comment.create(post, authorId, request.getContent());
+        Comment comment = Comment.create(post, memberId, request.getContent());
         Comment savedComment = commentRepository.save(comment);
 
         // 3. 게시글 댓글 수 증가
@@ -215,7 +215,7 @@ public class PostService {
      * - 삭제 시 게시글의 댓글 수가 1 감소합니다.
      */
     @Transactional
-    public void deleteComment(Long authorId, Long postId, Long commentId) {
+    public void deleteComment(Long memberId, Long postId, Long commentId) {
         // 1. 게시글 조회 (댓글 수 감소를 위해 필요)
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(CommunityErrorCode.POST_NOT_FOUND));
@@ -230,8 +230,8 @@ public class PostService {
         }
 
         // 4. 삭제 권한 확인: 댓글 작성자 또는 게시글 작성자
-        boolean isCommentOwner = comment.getAuthorId().equals(authorId);
-        boolean isPostOwner = post.getAuthorId().equals(authorId);
+        boolean isCommentOwner = comment.getAuthorId().equals(memberId);
+        boolean isPostOwner = post.getAuthorId().equals(memberId);
         if (!isCommentOwner && !isPostOwner) {
             throw new BusinessException(CommunityErrorCode.NOT_COMMENT_OWNER);
         }
