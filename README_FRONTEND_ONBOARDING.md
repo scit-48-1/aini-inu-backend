@@ -140,6 +140,7 @@ npm run dev
 백엔드 시작 시 아래 시드가 자동 적재됩니다.
 - `db/seed/00_lookup_seed.sql`
 - `db/seed/10_core_sample_seed.sql`
+- `db/seed/20_status_edge_seed.sql`
 - `db/seed/99_reset_sequences.sql`
 
 예시 계정:
@@ -147,6 +148,8 @@ npm run dev
 - `owner02@test.com` (`id=2`, `PET_OWNER`)
 - `finder05@test.com` (`id=5`, `PET_OWNER`)
 - `comm07@test.com` (`id=7`, `NON_PET_OWNER`)
+- `inactive9001@test.com` (`id=9001`, `PET_OWNER`, `INACTIVE`)
+- `banned9002@test.com` (`id=9002`, `NON_PET_OWNER`, `BANNED`, 로그인 제한)
 
 ## 9) 트러블슈팅
 
