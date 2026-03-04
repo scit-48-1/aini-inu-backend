@@ -22,10 +22,8 @@ import scit.ainiinu.community.repository.CommentRepository;
 import scit.ainiinu.community.repository.PostLikeRepository;
 import scit.ainiinu.community.repository.PostRepository;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -38,19 +36,10 @@ public class PostService {
 
     /**
      * 게시글 목록 조회 (무한 스크롤)
-     * - 차단한 사용자의 게시글은 조회되지 않습니다.
      * @param memberId 현재 로그인 사용자 ID (좋아요 여부 확인용)
      */
     public SliceResponse<PostResponse> getPosts(Long memberId, Pageable pageable) {
-        // TODO: Member Context 완성 후 실제 차단 목록 조회 로직 추가
-        List<Long> blockedUserIds = Collections.emptyList();
-
-        Slice<Post> posts;
-        if (blockedUserIds.isEmpty()) {
-            posts = postRepository.findAllBy(pageable);
-        } else {
-            posts = postRepository.findByAuthorIdNotIn(blockedUserIds, pageable);
-        }
+        Slice<Post> posts = postRepository.findAllBy(pageable);
 
         return SliceResponse.of(posts.map(post -> {
             boolean isLiked = postLikeRepository.existsByPostAndMemberId(post, memberId);
@@ -61,7 +50,6 @@ public class PostService {
     /**
      * 게시글 상세 조회 (댓글 포함)
      * - 게시글 내용과 해당 게시글에 달린 댓글 목록을 반환합니다.
-     * - 차단한 사용자의 댓글은 조회 목록에서 제외됩니다.
      * @param memberId 현재 로그인 사용자 ID (좋아요 여부 확인용)
      */
     public PostDetailResponse getPostDetail(Long memberId, Long postId) {
@@ -72,14 +60,10 @@ public class PostService {
         // 2. 댓글 목록 조회
         List<Comment> comments = commentRepository.findAllByPostOrderByCreatedAtAsc(post);
 
-        // 3. 차단된 사용자의 댓글 필터링
-        // TODO: Member Context 완성 후 실제 차단 목록 조회
-        List<Long> blockedUserIds = Collections.emptyList();
-
+        // 3. 댓글 응답 변환
         List<CommentResponse> commentResponses = comments.stream()
-                .filter(comment -> !blockedUserIds.contains(comment.getAuthorId()))
                 .map(CommentResponse::from)
-                .collect(Collectors.toList());
+                .toList();
 
         // 4. 좋아요 여부 조회
         boolean isLiked = postLikeRepository.existsByPostAndMemberId(post, memberId);
@@ -91,8 +75,6 @@ public class PostService {
      * 댓글 목록 조회 (무한 스크롤)
      */
     public SliceResponse<CommentResponse> getComments(Long memberId, Long postId, Pageable pageable) {
-        // TODO: memberId 기반 차단/권한 정책 확장
-
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(CommunityErrorCode.POST_NOT_FOUND));
 

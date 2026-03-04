@@ -5,14 +5,10 @@ import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import scit.ainiinu.community.entity.Post;
 
-import java.util.Collection;
 import java.util.List;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
-    // 차단 사용자 제외 페이지 조회
-    Slice<Post> findByAuthorIdNotIn(Collection<Long> blockedAuthorIds, Pageable pageable);
-
-    // 차단 목록이 없을 때 페이지 조회
+    // 페이지 조회
     Slice<Post> findAllBy(Pageable pageable);
 
     //최신 글
