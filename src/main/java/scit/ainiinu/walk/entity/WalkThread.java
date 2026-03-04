@@ -68,10 +68,10 @@ public class WalkThread extends BaseTimeEntity {
     @Column(name = "place_name", nullable = false, length = 200)
     private String placeName;
 
-    @Column(nullable = false, precision = 10, scale = 8)
+    @Column(nullable = false, precision = 10, scale = 6)
     private BigDecimal latitude;
 
-    @Column(nullable = false, precision = 11, scale = 8)
+    @Column(nullable = false, precision = 11, scale = 6)
     private BigDecimal longitude;
 
     @Column(length = 500)

@@ -3,6 +3,7 @@ package scit.ainiinu.common.entity.vo;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -24,14 +25,15 @@ public class Location {
     private static final BigDecimal MIN_LONGITUDE = new BigDecimal("-180");
     private static final BigDecimal MAX_LONGITUDE = new BigDecimal("180");
     private static final double EARTH_RADIUS_KM = 6371.0;
+    private static final int COORDINATE_SCALE = 6;
 
     @Column(nullable = false, length = 200)
     private String placeName;
 
-    @Column(nullable = false, precision = 10, scale = 8)
+    @Column(nullable = false, precision = 10, scale = 6)
     private BigDecimal latitude;
 
-    @Column(nullable = false, precision = 11, scale = 8)
+    @Column(nullable = false, precision = 11, scale = 6)
     private BigDecimal longitude;
 
     @Column(length = 500)
@@ -40,8 +42,8 @@ public class Location {
     private Location(String placeName, BigDecimal latitude, BigDecimal longitude, String address) {
         validate(placeName, latitude, longitude);
         this.placeName = placeName;
-        this.latitude = latitude;
-        this.longitude = longitude;
+        this.latitude = normalizeCoordinate(latitude);
+        this.longitude = normalizeCoordinate(longitude);
         this.address = address;
     }
 
@@ -144,6 +146,10 @@ public class Location {
         if (longitude.compareTo(MIN_LONGITUDE) < 0 || longitude.compareTo(MAX_LONGITUDE) > 0) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
+    }
+
+    private BigDecimal normalizeCoordinate(BigDecimal coordinate) {
+        return coordinate.setScale(COORDINATE_SCALE, RoundingMode.HALF_UP);
     }
 
     @Override

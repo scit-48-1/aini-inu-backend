@@ -85,8 +85,8 @@ public class WalkThreadService {
                 .allowNonPetOwner(request.getAllowNonPetOwner())
                 .isVisibleAlways(request.getIsVisibleAlways())
                 .placeName(request.getLocation().getPlaceName())
-                .latitude(toDecimal(request.getLocation().getLatitude(), 8))
-                .longitude(toDecimal(request.getLocation().getLongitude(), 8))
+                .latitude(toDecimal(request.getLocation().getLatitude(), 6))
+                .longitude(toDecimal(request.getLocation().getLongitude(), 6))
                 .address(request.getLocation().getAddress())
                 .status(WalkThreadStatus.RECRUITING)
                 .build();
@@ -169,8 +169,8 @@ public class WalkThreadService {
                 chatType,
                 request.getMaxParticipants(),
                 location != null ? location.getPlaceName() : null,
-                location != null && location.getLatitude() != null ? toDecimal(location.getLatitude(), 8) : null,
-                location != null && location.getLongitude() != null ? toDecimal(location.getLongitude(), 8) : null,
+                location != null && location.getLatitude() != null ? toDecimal(location.getLatitude(), 6) : null,
+                location != null && location.getLongitude() != null ? toDecimal(location.getLongitude(), 6) : null,
                 location != null ? location.getAddress() : null,
                 request.getAllowNonPetOwner(),
                 request.getIsVisibleAlways()

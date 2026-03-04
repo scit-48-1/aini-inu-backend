@@ -2,6 +2,8 @@ package scit.ainiinu.lostpet.dto;
 
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,6 +16,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LostPetAnalyzeRequest {
+    private static final int COORDINATE_SCALE = 6;
 
     @NotNull(message = "lostPetId는 필수입니다.")
     private Long lostPetId;
@@ -56,12 +59,21 @@ public class LostPetAnalyzeRequest {
                 .imageUrl(resolvedImage)
                 .mode(resolveMode())
                 .queryText(queryText)
-                .latitude(latitude)
-                .longitude(longitude)
+                .latitude(normalizeCoordinate(latitude))
+                .longitude(normalizeCoordinate(longitude))
                 .build();
     }
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private Double normalizeCoordinate(Double value) {
+        if (value == null) {
+            return null;
+        }
+        return BigDecimal.valueOf(value)
+                .setScale(COORDINATE_SCALE, RoundingMode.HALF_UP)
+                .doubleValue();
     }
 }

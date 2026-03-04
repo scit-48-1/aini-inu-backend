@@ -138,10 +138,10 @@ INSERT INTO thread (
     max_participants, allow_non_pet_owner, is_visible_always, place_name, latitude, longitude,
     address, status, created_at, updated_at
 ) VALUES
-    (2001, 1, '한강 저녁 산책', '저녁 한강 코스 같이 걸어요', CURRENT_DATE + 1, NOW() + INTERVAL '1 day', NOW() + INTERVAL '1 day 1 hour', 'GROUP', 4, false, true, '여의도 한강공원', 37.52830000, 126.93280000, '서울 영등포구 여의도동', 'RECRUITING', NOW(), NOW()),
-    (2002, 2, '아침 짧은 산책', '30분 가볍게 산책해요', CURRENT_DATE + 2, NOW() + INTERVAL '2 day', NOW() + INTERVAL '2 day 40 minute', 'INDIVIDUAL', 2, true, true, '뚝섬 한강공원', 37.53260000, 127.06660000, '서울 광진구 자양동', 'RECRUITING', NOW(), NOW()),
-    (2003, 3, '주말 공원 산책', '주말 오전 산책 모임', CURRENT_DATE - 2, NOW() - INTERVAL '2 day', NOW() - INTERVAL '2 day 1 hour', 'GROUP', 5, false, true, '서울숲', 37.54450000, 127.03740000, '서울 성동구 성수동', 'EXPIRED', NOW(), NOW()),
-    (2004, 1, '삭제된 테스트 모집', '삭제 상태 테스트용', CURRENT_DATE - 3, NOW() - INTERVAL '3 day', NOW() - INTERVAL '3 day 1 hour', 'GROUP', 3, false, false, '반포 한강공원', 37.51020000, 126.99500000, '서울 서초구 반포동', 'DELETED', NOW(), NOW())
+    (2001, 1, '한강 저녁 산책', '저녁 한강 코스 같이 걸어요', CURRENT_DATE + 1, NOW() + INTERVAL '1 day', NOW() + INTERVAL '1 day 1 hour', 'GROUP', 4, false, true, '여의도 한강공원', 37.528300, 126.932800, '서울 영등포구 여의도동', 'RECRUITING', NOW(), NOW()),
+    (2002, 2, '아침 짧은 산책', '30분 가볍게 산책해요', CURRENT_DATE + 2, NOW() + INTERVAL '2 day', NOW() + INTERVAL '2 day 40 minute', 'INDIVIDUAL', 2, true, true, '뚝섬 한강공원', 37.532600, 127.066600, '서울 광진구 자양동', 'RECRUITING', NOW(), NOW()),
+    (2003, 3, '주말 공원 산책', '주말 오전 산책 모임', CURRENT_DATE - 2, NOW() - INTERVAL '2 day', NOW() - INTERVAL '2 day 1 hour', 'GROUP', 5, false, true, '서울숲', 37.544500, 127.037400, '서울 성동구 성수동', 'EXPIRED', NOW(), NOW()),
+    (2004, 1, '삭제된 테스트 모집', '삭제 상태 테스트용', CURRENT_DATE - 3, NOW() - INTERVAL '3 day', NOW() - INTERVAL '3 day 1 hour', 'GROUP', 3, false, false, '반포 한강공원', 37.510200, 126.995000, '서울 서초구 반포동', 'DELETED', NOW(), NOW())
 ON CONFLICT (id) DO UPDATE
 SET author_id = EXCLUDED.author_id,
     title = EXCLUDED.title,

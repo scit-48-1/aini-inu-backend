@@ -449,7 +449,7 @@ class LocationTest {
                     new BigDecimal("126.97220000"));
 
             Location location2 = Location.of("서울역",
-                    new BigDecimal("37.55630001"),
+                    new BigDecimal("37.55630100"),
                     new BigDecimal("126.97220000"));
 
             // when & then
@@ -546,8 +546,8 @@ class LocationTest {
 
             // then
             assertThat(result).contains("서울역");
-            assertThat(result).contains("37.55630000");
-            assertThat(result).contains("126.97220000");
+            assertThat(result).contains("37.556300");
+            assertThat(result).contains("126.972200");
             assertThat(result).contains("서울특별시 용산구");
         }
     }
