@@ -28,4 +28,3 @@ SELECT setval(pg_get_serial_sequence('lost_pet_match', 'id'), COALESCE((SELECT M
 SELECT setval(pg_get_serial_sequence('post', 'id'), COALESCE((SELECT MAX(id) FROM post), 1), true);
 SELECT setval(pg_get_serial_sequence('comment', 'id'), COALESCE((SELECT MAX(id) FROM comment), 1), true);
 SELECT setval(pg_get_serial_sequence('post_like', 'id'), COALESCE((SELECT MAX(id) FROM post_like), 1), true);
-SELECT setval(pg_get_serial_sequence('story', 'id'), COALESCE((SELECT MAX(id) FROM story), 1), true);

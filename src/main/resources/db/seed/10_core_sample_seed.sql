@@ -458,15 +458,3 @@ ON CONFLICT (id) DO UPDATE
 SET post_id = EXCLUDED.post_id,
     member_id = EXCLUDED.member_id,
     updated_at = NOW();
-
-INSERT INTO story (id, author_id, media_url, expires_at, created_at, updated_at) VALUES
-    (3801, 2, 'https://cdn.ainiinu.dev/story/3801.jpg', NOW() + INTERVAL '22 hour', NOW() - INTERVAL '2 hour', NOW()),
-    (3802, 3, 'https://cdn.ainiinu.dev/story/3802.jpg', NOW() + INTERVAL '23 hour', NOW() - INTERVAL '1 hour', NOW()),
-    (3803, 5, 'https://cdn.ainiinu.dev/story/3803.jpg', NOW() + INTERVAL '19 hour', NOW() - INTERVAL '5 hour', NOW()),
-    (3804, 2, 'https://cdn.ainiinu.dev/story/3804.jpg', NOW() - INTERVAL '6 hour', NOW() - INTERVAL '30 hour', NOW()),
-    (3805, 6, 'https://cdn.ainiinu.dev/story/3805.jpg', NOW() + INTERVAL '21 hour', NOW() - INTERVAL '3 hour', NOW())
-ON CONFLICT (id) DO UPDATE
-SET author_id = EXCLUDED.author_id,
-    media_url = EXCLUDED.media_url,
-    expires_at = EXCLUDED.expires_at,
-    updated_at = NOW();
