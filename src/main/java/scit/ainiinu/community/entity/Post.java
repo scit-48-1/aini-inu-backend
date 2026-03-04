@@ -22,8 +22,8 @@ public class Post extends BaseTimeEntity {
     private Long id;
 
     @Column(nullable = false)
-    private Long authorId; // TODO(Member 완성 후) ManyToOne author로 리팩토링
-    // Member ID 참조 (Member Context)
+    private Long authorId;
+    // Member 연관관계 대신 ID 참조를 유지해 컨텍스트를 분리한다.
 
     @Column(nullable = false, length = 2000)
     private String content;

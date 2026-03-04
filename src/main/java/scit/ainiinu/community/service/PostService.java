@@ -21,18 +21,28 @@ import scit.ainiinu.community.exception.CommunityErrorCode;
 import scit.ainiinu.community.repository.CommentRepository;
 import scit.ainiinu.community.repository.PostLikeRepository;
 import scit.ainiinu.community.repository.PostRepository;
+import scit.ainiinu.member.entity.Member;
+import scit.ainiinu.member.repository.MemberRepository;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PostService {
+    private static final String UNKNOWN_AUTHOR_NICKNAME = "이웃";
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final PostLikeRepository postLikeRepository;
+    private final MemberRepository memberRepository;
 
     /**
      * 게시글 목록 조회 (무한 스크롤)
@@ -40,10 +50,15 @@ public class PostService {
      */
     public SliceResponse<PostResponse> getPosts(Long memberId, Pageable pageable) {
         Slice<Post> posts = postRepository.findAllBy(pageable);
+        Map<Long, Member> memberMap = loadMemberMap(
+                posts.getContent().stream()
+                        .map(Post::getAuthorId)
+                        .toList()
+        );
 
         return SliceResponse.of(posts.map(post -> {
             boolean isLiked = postLikeRepository.existsByPostAndMemberId(post, memberId);
-            return PostResponse.from(post, isLiked);
+            return PostResponse.from(post, resolveAuthor(post.getAuthorId(), memberMap), isLiked);
         }));
     }
 
@@ -59,16 +74,31 @@ public class PostService {
 
         // 2. 댓글 목록 조회
         List<Comment> comments = commentRepository.findAllByPostOrderByCreatedAtAsc(post);
+        Map<Long, Member> memberMap = loadMemberMap(
+                Stream.concat(
+                                Stream.of(post.getAuthorId()),
+                                comments.stream().map(Comment::getAuthorId)
+                        )
+                        .toList()
+        );
 
         // 3. 댓글 응답 변환
         List<CommentResponse> commentResponses = comments.stream()
-                .map(CommentResponse::from)
+                .map(comment -> CommentResponse.from(
+                        comment,
+                        resolveAuthor(comment.getAuthorId(), memberMap)
+                ))
                 .toList();
 
         // 4. 좋아요 여부 조회
         boolean isLiked = postLikeRepository.existsByPostAndMemberId(post, memberId);
 
-        return PostDetailResponse.of(post, commentResponses, isLiked);
+        return PostDetailResponse.of(
+                post,
+                resolveAuthor(post.getAuthorId(), memberMap),
+                commentResponses,
+                isLiked
+        );
     }
 
     /**
@@ -79,7 +109,16 @@ public class PostService {
                 .orElseThrow(() -> new BusinessException(CommunityErrorCode.POST_NOT_FOUND));
 
         Slice<Comment> comments = commentRepository.findByPostOrderByCreatedAtAsc(post, pageable);
-        return SliceResponse.of(comments.map(CommentResponse::from));
+        Map<Long, Member> memberMap = loadMemberMap(
+                comments.getContent().stream()
+                        .map(Comment::getAuthorId)
+                        .toList()
+        );
+
+        return SliceResponse.of(comments.map(comment -> CommentResponse.from(
+                comment,
+                resolveAuthor(comment.getAuthorId(), memberMap)
+        )));
     }
 
     /**
@@ -93,7 +132,8 @@ public class PostService {
                 request.getImageUrls()
         );
         Post saved = postRepository.save(post);
-        return PostResponse.from(saved, false);
+        Map<Long, Member> memberMap = loadMemberMap(List.of(saved.getAuthorId()));
+        return PostResponse.from(saved, resolveAuthor(saved.getAuthorId(), memberMap), false);
     }
 
     /**
@@ -116,8 +156,9 @@ public class PostService {
 
         // 4. 좋아요 여부 조회 (수정한 사용자는 작성자이므로 memberId를 사용)
         boolean isLiked = postLikeRepository.existsByPostAndMemberId(post, memberId);
+        Map<Long, Member> memberMap = loadMemberMap(List.of(post.getAuthorId()));
 
-        return PostResponse.from(post, isLiked);
+        return PostResponse.from(post, resolveAuthor(post.getAuthorId(), memberMap), isLiked);
     }
 
     /**
@@ -188,7 +229,8 @@ public class PostService {
         // 3. 게시글 댓글 수 증가
         post.increaseComment();
 
-        return CommentResponse.from(savedComment);
+        Map<Long, Member> memberMap = loadMemberMap(List.of(savedComment.getAuthorId()));
+        return CommentResponse.from(savedComment, resolveAuthor(savedComment.getAuthorId(), memberMap));
     }
 
     /**
@@ -221,5 +263,26 @@ public class PostService {
         // 5. 댓글 삭제 및 카운트 감소
         commentRepository.delete(comment);
         post.decreaseComment();
+    }
+
+    private Map<Long, Member> loadMemberMap(Collection<Long> memberIds) {
+        List<Long> distinctIds = memberIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (distinctIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return memberRepository.findAllById(distinctIds).stream()
+                .collect(Collectors.toMap(Member::getId, Function.identity()));
+    }
+
+    private PostResponse.Author resolveAuthor(Long memberId, Map<Long, Member> memberMap) {
+        Member member = memberMap.get(memberId);
+        if (member == null) {
+            return PostResponse.Author.of(memberId, UNKNOWN_AUTHOR_NICKNAME, null);
+        }
+        return PostResponse.Author.of(member.getId(), member.getNickname(), member.getProfileImageUrl());
     }
 }

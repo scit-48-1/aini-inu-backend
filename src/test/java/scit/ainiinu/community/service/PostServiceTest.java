@@ -3,6 +3,7 @@ package scit.ainiinu.community.service;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -15,7 +16,6 @@ import scit.ainiinu.common.exception.BusinessException;
 import scit.ainiinu.common.response.SliceResponse;
 import scit.ainiinu.community.dto.CommentCreateRequest;
 import scit.ainiinu.community.dto.CommentResponse;
-import scit.ainiinu.community.dto.PostCreateRequest;
 import scit.ainiinu.community.dto.PostDetailResponse;
 import scit.ainiinu.community.dto.PostLikeResponse;
 import scit.ainiinu.community.dto.PostResponse;
@@ -27,6 +27,8 @@ import scit.ainiinu.community.exception.CommunityErrorCode;
 import scit.ainiinu.community.repository.CommentRepository;
 import scit.ainiinu.community.repository.PostLikeRepository;
 import scit.ainiinu.community.repository.PostRepository;
+import scit.ainiinu.member.entity.Member;
+import scit.ainiinu.member.repository.MemberRepository;
 
 import java.lang.reflect.Field;
 import java.util.Collections;
@@ -36,8 +38,10 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,8 +56,16 @@ class PostServiceTest {
     @Mock
     private PostLikeRepository postLikeRepository;
 
+    @Mock
+    private MemberRepository memberRepository;
+
     @InjectMocks
     private PostService postService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(memberRepository.findAllById(anyIterable())).thenReturn(List.of());
+    }
 
     @Nested
     @DisplayName("댓글 작성")
@@ -82,8 +94,40 @@ class PostServiceTest {
 
             // then
             assertThat(response.getContent()).isEqualTo("Nice dog!");
+            assertThat(response.getAuthor().getId()).isEqualTo(authorId);
+            assertThat(response.getAuthor().getNickname()).isEqualTo("이웃");
             assertThat(post.getCommentCount()).isEqualTo(1);
             then(commentRepository).should(times(1)).save(any(Comment.class));
+        }
+
+        @Test
+        @DisplayName("작성자 회원 정보가 있으면 댓글 응답 author에 닉네임/프로필이 채워진다")
+        void success_with_member_profile() {
+            // given
+            Long postId = 1L;
+            Long authorId = 1L;
+            Post post = Post.create(authorId, "Content", Collections.emptyList());
+            setId(post, postId);
+
+            CommentCreateRequest request = new CommentCreateRequest();
+            request.setContent("Nice dog!");
+
+            Comment savedComment = Comment.create(post, authorId, "Nice dog!");
+            setId(savedComment, 10L);
+
+            Member author = createMember(authorId, "몽이아빠", "https://cdn.example.com/profile.jpg");
+
+            given(postRepository.findById(postId)).willReturn(Optional.of(post));
+            given(commentRepository.save(any(Comment.class))).willReturn(savedComment);
+            given(memberRepository.findAllById(anyIterable())).willReturn(List.of(author));
+
+            // when
+            CommentResponse response = postService.createComment(authorId, postId, request);
+
+            // then
+            assertThat(response.getAuthor().getId()).isEqualTo(authorId);
+            assertThat(response.getAuthor().getNickname()).isEqualTo("몽이아빠");
+            assertThat(response.getAuthor().getProfileImageUrl()).isEqualTo("https://cdn.example.com/profile.jpg");
         }
 
         @Test
@@ -304,6 +348,8 @@ class PostServiceTest {
 
             // then
             assertThat(response.getContent()).isEqualTo("Updated Content");
+            assertThat(response.getAuthor().getId()).isEqualTo(authorId);
+            assertThat(response.getAuthor().getNickname()).isEqualTo("이웃");
         }
 
         @Test
@@ -375,7 +421,67 @@ class PostServiceTest {
             // then
             assertThat(response.getContent()).hasSize(2);
             assertThat(response.getContent().get(0).getContent()).isEqualTo("Comment 1");
+            assertThat(response.getContent().get(0).getAuthor().getId()).isEqualTo(2L);
+            assertThat(response.getContent().get(0).getAuthor().getNickname()).isEqualTo("이웃");
             then(commentRepository).should(times(1)).findByPostOrderByCreatedAtAsc(post, pageable);
+        }
+    }
+
+    @Nested
+    @DisplayName("게시글 목록 조회")
+    class GetPosts {
+
+        @Test
+        @DisplayName("게시글 작성자 회원 정보가 없으면 author는 fallback으로 채워진다")
+        void success_with_fallback_author() {
+            // given
+            Long memberId = 1L;
+            Pageable pageable = PageRequest.of(0, 20);
+
+            Post post = Post.create(2L, "Post Content", Collections.emptyList());
+            setId(post, 100L);
+
+            Slice<Post> postSlice = new SliceImpl<>(List.of(post), pageable, false);
+
+            given(postRepository.findAllBy(pageable)).willReturn(postSlice);
+            given(postLikeRepository.existsByPostAndMemberId(post, memberId)).willReturn(false);
+
+            // when
+            SliceResponse<PostResponse> response = postService.getPosts(memberId, pageable);
+
+            // then
+            assertThat(response.getContent()).hasSize(1);
+            PostResponse item = response.getContent().get(0);
+            assertThat(item.getAuthor().getId()).isEqualTo(2L);
+            assertThat(item.getAuthor().getNickname()).isEqualTo("이웃");
+            assertThat(item.isLiked()).isFalse();
+        }
+
+        @Test
+        @DisplayName("게시글 작성자 회원 정보가 있으면 author 닉네임/프로필이 채워진다")
+        void success_with_member_profile() {
+            // given
+            Long memberId = 1L;
+            Pageable pageable = PageRequest.of(0, 20);
+
+            Post post = Post.create(2L, "Post Content", Collections.emptyList());
+            setId(post, 100L);
+
+            Slice<Post> postSlice = new SliceImpl<>(List.of(post), pageable, false);
+            Member postAuthor = createMember(2L, "몽이아빠", "https://cdn.example.com/profile.jpg");
+
+            given(postRepository.findAllBy(pageable)).willReturn(postSlice);
+            given(postLikeRepository.existsByPostAndMemberId(post, memberId)).willReturn(true);
+            given(memberRepository.findAllById(anyIterable())).willReturn(List.of(postAuthor));
+
+            // when
+            SliceResponse<PostResponse> response = postService.getPosts(memberId, pageable);
+
+            // then
+            PostResponse item = response.getContent().get(0);
+            assertThat(item.getAuthor().getNickname()).isEqualTo("몽이아빠");
+            assertThat(item.getAuthor().getProfileImageUrl()).isEqualTo("https://cdn.example.com/profile.jpg");
+            assertThat(item.isLiked()).isTrue();
         }
     }
 
@@ -406,12 +512,54 @@ class PostServiceTest {
 
             // then
             assertThat(response.getId()).isEqualTo(postId);
+            assertThat(response.getAuthor().getId()).isEqualTo(1L);
+            assertThat(response.getAuthor().getNickname()).isEqualTo("이웃");
             assertThat(response.getComments()).hasSize(2);
+            assertThat(response.getComments().get(0).getAuthor().getNickname()).isEqualTo("이웃");
             then(commentRepository).should(times(1)).findAllByPostOrderByCreatedAtAsc(post);
+        }
+
+        @Test
+        @DisplayName("작성자 회원 정보가 있으면 게시글/댓글 author에 닉네임/프로필이 채워진다")
+        void success_with_member_profile() {
+            // given
+            Long postId = 100L;
+            Post post = Post.create(1L, "Post Content", Collections.emptyList());
+            setId(post, postId);
+
+            Comment comment = Comment.create(post, 2L, "Comment 1");
+            setId(comment, 1L);
+
+            Member postAuthor = createMember(1L, "몽이아빠", "https://cdn.example.com/post-author.jpg");
+            Member commentAuthor = createMember(2L, "보리누나", "https://cdn.example.com/comment-author.jpg");
+
+            given(postRepository.findById(postId)).willReturn(Optional.of(post));
+            given(commentRepository.findAllByPostOrderByCreatedAtAsc(post)).willReturn(List.of(comment));
+            given(memberRepository.findAllById(anyIterable())).willReturn(List.of(postAuthor, commentAuthor));
+
+            // when
+            PostDetailResponse response = postService.getPostDetail(1L, postId);
+
+            // then
+            assertThat(response.getAuthor().getNickname()).isEqualTo("몽이아빠");
+            assertThat(response.getAuthor().getProfileImageUrl()).isEqualTo("https://cdn.example.com/post-author.jpg");
+            assertThat(response.getComments().get(0).getAuthor().getNickname()).isEqualTo("보리누나");
+            assertThat(response.getComments().get(0).getAuthor().getProfileImageUrl())
+                    .isEqualTo("https://cdn.example.com/comment-author.jpg");
         }
     }
     
     // ... (기타 테스트 및 헬퍼 메서드는 기존과 동일) ...
+    private Member createMember(Long memberId, String nickname, String profileImageUrl) {
+        Member member = Member.builder()
+                .email("member-" + memberId + "@test.com")
+                .nickname(nickname)
+                .profileImageUrl(profileImageUrl)
+                .build();
+        setId(member, memberId);
+        return member;
+    }
+
     // ID 설정을 위한 리플렉션 헬퍼 메서드
     private void setId(Object entity, Long id) {
         try {

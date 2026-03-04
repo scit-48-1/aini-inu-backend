@@ -21,10 +21,11 @@ public class PostResponse {
     /**
      * 좋아요 여부를 포함하여 PostResponse 생성
      * @param post 게시글 엔티티
+     * @param author 작성자 정보
      * @param isLiked 현재 사용자의 좋아요 여부
      * @return PostResponse
      */
-    public static PostResponse from(Post post, boolean isLiked) {
+    public static PostResponse from(Post post, Author author, boolean isLiked) {
         PostResponse r = new PostResponse();
         r.id = post.getId();
         r.content = post.getContent();
@@ -33,8 +34,7 @@ public class PostResponse {
         r.commentCount = post.getCommentCount();
         r.isLiked = isLiked;
         r.createdAt = post.getCreatedAt();
-        // TODO: Member 연동 후 실제 Author 정보 채움
-        r.author = Author.of(post.getAuthorId());
+        r.author = author;
         return r;
     }
 
@@ -45,12 +45,11 @@ public class PostResponse {
         private String nickname;
         private String profileImageUrl;
 
-        public static Author of(Long memberId){
+        public static Author of(Long memberId, String nickname, String profileImageUrl){
             Author a = new Author();
             a.id = memberId;
-            // TODO Member 연동 후 채움
-            a.nickname = null;
-            a.profileImageUrl = null;
+            a.nickname = nickname;
+            a.profileImageUrl = profileImageUrl;
             return a;
         }
     }

@@ -21,11 +21,17 @@ public class PostDetailResponse {
     /**
      * 좋아요 여부를 포함하여 PostDetailResponse 생성
      * @param post 게시글 엔티티
+     * @param author 작성자 정보
      * @param comments 댓글 목록
      * @param isLiked 현재 사용자의 좋아요 여부
      * @return PostDetailResponse
      */
-    public static PostDetailResponse of(Post post, List<CommentResponse> comments, boolean isLiked) {
+    public static PostDetailResponse of(
+            Post post,
+            PostResponse.Author author,
+            List<CommentResponse> comments,
+            boolean isLiked
+    ) {
         PostDetailResponse r = new PostDetailResponse();
         r.id = post.getId();
         r.content = post.getContent();
@@ -34,7 +40,7 @@ public class PostDetailResponse {
         r.commentCount = post.getCommentCount();
         r.isLiked = isLiked;
         r.createdAt = post.getCreatedAt();
-        r.author = PostResponse.Author.of(post.getAuthorId());
+        r.author = author;
         r.comments = comments;
         return r;
     }
