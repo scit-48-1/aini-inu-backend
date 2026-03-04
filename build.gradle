@@ -45,8 +45,6 @@ dependencies {
     implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
     implementation 'me.paulschwarz:spring-dotenv:4.0.0'
     implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
-    implementation 'io.github.resilience4j:resilience4j-retry:2.2.0'
-    implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.2.0'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
 
     // JWT Authentication (Issue #1)
